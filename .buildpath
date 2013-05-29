@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<buildpath>
+	<buildpathentry excluding="ApkzMain.vfs - 복사본/|ApkzMain.vfs - 복사본/binaries/|ApkzMain.vfs - 복사본/lib/|ApkzMain.vfs - 복사본/lib/app-ApkzMain/|ApkzMain.vfs - 복사본/lib/app-ApkzMain/locale/" kind="src" path=""/>
+	<buildpathentry kind="con" path="org.eclipse.dltk.launching.INTERPRETER_CONTAINER">
+		<attributes>
+			<attribute name="user_dependencies" value=""/>
+			<attribute name="auto_dependencies" value="base64|msgcat|http|starkit|registry|Tcl|tooltip"/>
+		</attributes>
+	</buildpathentry>
+</buildpath>
