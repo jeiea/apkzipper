@@ -18,5 +18,4 @@ namespace eval Configuration {
 		
 	}
 	
-	[mc asdf]
 }

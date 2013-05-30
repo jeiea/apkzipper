@@ -1,5 +1,3 @@
-# 씁... Eclipse DLTK가 좋긴한데 8.6의 문법을 지원하지 않는군.
-
 namespace eval ModApk {
 	
 	set types [list \
@@ -20,12 +18,12 @@ namespace eval ModApk {
 		if {$args != {}} {
 			set cAppPaths $args
 		} {
-			set cAppPaths [tk_getOpenFile -filetypes "$types" -multiple 1 -initialdir [file dirname $::vfsdir] -title [mc OPEN_MULTIPLE_FILES_DIALOG_TITLE]]
+			set cAppPaths [tk_getOpenFile -filetypes "$types" \
+				-multiple 1 -initialdir [file dirname $::vfsdir] \
+				-title [mc {You can select multiple files or folders}]]
 		}
 
-		if {$cAppPaths != ""} {
-			set ::capps [file tail [lindex $cAppPaths 0]]
-		}
+		set cAppPaths [::GUI::ImportFiles $cAppPaths]
 	}
 	
 	proc {Select app recent} {} {
@@ -85,13 +83,9 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 			[mc {Retry with removing data}]]
 		
 		switch $ans {
-			[mc Abort] return
-			[mc {Retry with conserving data}] {
-				set $::config(uninstallConserveData) -k
-			}
-			[mc {Retry with removing data}] {
-				set $::config(uninstallConserveData) {}
-			}
+			0 { return }
+			1 { set $::config(uninstallConserveData) -k }
+			2 { set $::config(uninstallConserveData) {} }
 		}
 		Uninstall $path
 	}
@@ -102,7 +96,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 	}
 
 	proc Adb_waitfor cmd {
-		::twapi::create_process {} -cmdline "cmd /C echo [mc {Waiting for device...}] & \
+		::twapi::create_process {} -cmdline "cmd /C echo [mc {Waiting for device... Aborting is Ctrl+C}] & \
 			[::ModApk::GetVFile adb.exe] wait-for-device & [::ModApk::GetVFile adb.exe] [string tolower $cmd]" \
 			-title [mc "ADB $cmd"] -newconsole 1 -inherithandles 1
 	}
@@ -371,7 +365,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		set address [InputDlg [mc {Type android net address} $::hist(ip)]]
 		if [string is space $address] return
 		# Adb version이 있는 이유는 Adb함수가 Adb구동 이전에 필요한 파일들을 복사해주기 때문. 이건 ADB shell명령에도 있음.
-		::GUI::Print [mc {ADB connecting... }]\n
+		::GUI::Print [mc {ADB connecting...}]\n
 #		::twapi::create_process {} -cmdline "cmd /C echo [mc {Connecting...}] & \
 #			[::ModApk::GetVFile adb.exe] connect $address $config(actionAfterConnect)" \
 #			-title [mc "ADB Connect"] -newconsole 1 -inherithandles 1
@@ -384,12 +378,12 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 	}
 
 	proc {Clean folder} detail {
-		set reply [tk_dialog .foo [mc Confirm] "You choosed [mc $detail].\nis this right? this task is unrecovable." \
+		# TODO: 휴지통으로 버릴 수 있으면 좋음. 차선책은 어떤 파일들이 삭제될 지 알려주는 것.
+		set reply [tk_dialog .foo [mc Confirm] [mc "You choosed %s.\nis this right? this task is unrecovable." [mc $detail]] \
 			warning 1 [mc Yes] [mc No]]
-		if {$reply == [mc No]} return
+		if {$reply == 1} return
 
 		set target {}
-
 		if [info exist ::cAppPaths] {
 			foreach capp $::cAppPaths {
 				GetNativePathArray $capp cApp
@@ -412,7 +406,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 
 		foreach item $target {
 			::GUI::Print "[mc Delete]: [AdaptPath $item]\n"
-			#file delete -force -- $item
+			file delete -force -- $item
 		}
 	}
 
@@ -424,7 +418,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		::GUI::Print [mc {Checking update..}]\n
 
 		::http::config -useragent "Mozilla/5.0 (compatible; MSIE 10.0; $::tcl_platform(os) $::tcl_platform(osVersion);)"
-		set updateinfo [httpcopy http://db.tt/pUllPoOF]
+		set updateinfo [httpcopy http://db.tt/L2vLwWpq]
 		if {$updateinfo == ""} {
 			::GUI::Print [mc {Update info not found. Please check website.}]\n
 			eval $exit
@@ -446,7 +440,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 			}
 			append changelog \n
 		}
-		set ans [tk_dialog .updateDlg [mc {New version found!}] [string trim $changelog] {} [mc YES] [mc YES] [mc NO]]
+		set ans [tk_dialog .updateDlg [mc "New version found!\nDo you want to update?"] [string trim $changelog] {} [mc Yes] [mc Yes] [mc No]]
 		if {$ans == 1} $exit
 
 		set latestver [max {*}[dict keys $updateinfo]]

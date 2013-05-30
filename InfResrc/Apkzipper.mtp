@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MYTCL>
+  <VERSION value="1.0"/>
+  <CREATION value="12/29/2012 19:37:21"/>
+  <NAME value="Apkzipper"/>
+  <PROPERTIES>
+    <BUILD>
+      <OUTPUTFILE value="Apkzipper.exe"/>
+      <LOCATION/>
+      <ICON/>
+      <CLEANTMP value="false"/>
+      <ENCODING/>
+      <COPYDEPFILES value="true"/>
+    </BUILD>
+    <VFS value="">
+      <lib value="">
+        <tcl8.5 value="">
+          <encoding value=""/>
+        </tcl8.5>
+        <app-ApkzMain value="ApkzSub.tcl"/>
+      </lib>
+    </VFS>
+    <RUN>
+      <DEBUGPORTNUMBER/>
+      <ARGS/>
+    </RUN>
+    <PACKAGES/>
+  </PROPERTIES>
+  <TYPE value="Window Application"/>
+  <SOURCES value="ApkzMain.tcl;repository.tcl;ApkzSub.tcl;" main="ApkzMain.tcl"/>
+  <BREAKPOINTS value="TablistScrolling.tcl,20;TablistScrolling.tcl,31;TablistScrolling.tcl,35;"/>
+  <BOOKMARKS value=""/>
+  <WATCHVARIABLE/>
+</MYTCL>

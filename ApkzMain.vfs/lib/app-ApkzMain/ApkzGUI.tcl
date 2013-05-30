@@ -3,30 +3,30 @@ source $libpath/ApkzSub.tcl
 namespace eval GUI {
 	namespace export TraverseCApp Print
 	variable currentOp ""
-	variable capps ""
-	
+	variable cappLabel ""
+
 	namespace import ::tooltip::*
 
 	proc init args {
 		menu.generate
 		widget.layout
 	}
-	
+
 	proc widget.generate {} {
-		
+
 	}
-	
+
 	proc widget.layout {} {
-		
+
 	}
-	
+
 	wm title . [mc {ApkZipper v1.9 alpha}]
 	tooltip delay 50
 
 	proc menu.generate {} {
 		catch {destroy .mbar}
 		. config -menu [menu .mbar]
-		
+
 		foreach {label menu} [list \
 			{&Config}		[set mConfig	[menu .mbar.config]			] \
 			{&SDK Function}	[set mSdk		[menu .mbar.sdk]			] \
@@ -38,9 +38,9 @@ namespace eval GUI {
 			[winfo parent $menu] add cascade -label $markRemoved \
 				-menu $menu -underline [string first & [mc $label]]
 		}
-		
+
 		foreach idx [seq 10] {$mConfig.zlevel add radiobutton \
-			-label [mc "Ziplevel $idx"] -value $idx -variable ::config(zlevel)}
+				-label [mc "Ziplevel $idx"] -value $idx -variable ::config(zlevel)}
 		foreach {label opt} [list	\
 			{Sources}		{-r   } \
 			{Resources}		{-s   } \
@@ -71,23 +71,22 @@ namespace eval GUI {
 		# .mbar.sdk add command -label [mc FLASH_RECOVERY] -command {}
 
 		foreach {label cmd} [list \
-		{Check update}	{{::ModApk::Check update}} \
-		{Visit website}	{exec cmd /C start "" http://ddwroom.tistory.com/ &} \
-		Help {tk_messageBox -title [mc Sorry] -detail [mc {Not yet ready}]}] {
+			{Check update}	{{::ModApk::Check update}} \
+			{Visit website}	{exec cmd /C start "" http://ddwroom.tistory.com/ &} \
+			Help {tk_messageBox -title [mc Sorry] -detail [mc {Not yet ready}]}] {
 			$mEtc add command -label [mc $label] -command $cmd
 		}
 		$mEtc add cascade -label [mc {Clean folder}] -menu [menu $mEtc.clean -tearoff 0]
-		
+
 		foreach item {
 		{Delete current result} {Delete current workdir} {Delete current except original} {Delete current all} \
 		{Delete all result} {Delete all workdir} {Delete all except original} {Delete all}} {
-			$mEtc.clean add command -label [mc $item] -command "::ModApk::{Clean folder} $item"
+			$mEtc.clean add command -label [mc $item] -command "{::ModApk::Clean folder} [list $item]"
 		}
 	}
 
-
 	# 버튼 생성 시작
-	pack [ttk::label .lApp -textvariable capps] -fill x -side top
+	pack [ttk::label .lApp -textvariable ::GUI::cappLabel] -fill x -side top
 	pack [ttk::panedwindow .p -orient vertical] -padx 3 -pady 3 -expand 1 -fill both -side bottom
 	.p add [ttk::frame .p.f1 -relief solid]
 	.p add [ttk::labelframe .p.f2 -width 100 -height 100]
@@ -99,13 +98,13 @@ namespace eval GUI {
 		if ![winfo exists $parentWin] {
 			pack [ttk::frame $parentWin] -side left -expand true -fill both
 		}
-		
+
 		# 생성과 바인딩
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
 		pack [ttk::button $path -text "$count. [mc $proc]" \
 			-command "::GUI::TraverseCApp {::ModApk::$proc}"] -padx 3 -expand true -fill both
-		
+
 		# 두번째 바인딩
 		if {$proc2 != ""} {
 			bind $path $::config(mod2) "::GUI::TraverseCApp {::ModApk::$proc2}"
@@ -115,9 +114,7 @@ namespace eval GUI {
 		incr count
 	}
 	unset colStack parentWin path count
-	
-	
-	
+
 	# 버튼 생성 끝
 
 	# 텍스트박스 생성
@@ -142,21 +139,22 @@ namespace eval GUI {
 			}
 		}
 	}
+
 	unset under
-	
+
 	proc Print data {
 		set wLogText _.p.f2.fLog.tCmd
 		$wLogText insert end $data
 		$wLogText yview end
 	}
-	
+
 	pack [ttk::entry .p.f2.ePrompt] -fill x -side bottom
 	bind . <FocusIn> {
 		if {[string first "%W" ".p.f2.fLog.tCmd"] == -1} {
 			namespace code {focus .p.f2.ePrompt}
 		}
 	}
-	
+
 	# event의 mapping keys to virtual event를 자세히 읽어야 하는구나 ㅡㅡ;
 	# 대충 이런 Custom event가 우선순위가 높고, 별 처리를 안 해주면 다른 이벤트는 처리 안 하는 듯 하다.
 	# 아님 break해도 의미가 있고.
@@ -168,11 +166,11 @@ namespace eval GUI {
 		if {[string first _ "%K"] != -1} return
 		# 방향키도 범위선택에 중요하므로 통과
 		if [regexp {Up|Down|Left|Right} "%K"] return
-		
+
 		focus .p.f2.ePrompt
 		event generate .p.f2.ePrompt <KeyPress> -keycode %k
 	}
-	
+
 	bind .p.f2.ePrompt <Return> {
 		set cmd [.p.f2.ePrompt get]
 		if {$cmd != ""} {
@@ -183,7 +181,6 @@ namespace eval GUI {
 	focus .p.f2.ePrompt
 	#텍스트박스 생성 끝
 
-
 	foreach fram [winfo children .p.f1] {
 		grid rowconfigure $fram [seq [llength [winfo children $fram]]] -weight 1
 	}
@@ -192,36 +189,53 @@ namespace eval GUI {
 	#bind all <KeyRelease-Control_L> {Print "b\n"}
 	#bind all <KeyPress> {::GUI::Print "%%K=%K, %%A=%A, %%k=%k\n"}
 
-
 	wm minsize . 450 200
 	wm geometry . 640x480
+
+	proc ImportFiles paths {
+		set qualified [list]
+		set reply $::config(askExtension)
+
+		foreach path $paths {
+			if {![file readable $path] && [file writable $path]} {
+				::GUI::Print [mc {Access denied: %1$s} $path]
+				continue
+			} elseif [file isdirectory $path] {
+				lappend paths [glob $path {*.apk *.jar}]
+				continue
+			} elseif {!(
+				[string match -nocase *.apk $path] ||
+				[string match -nocase *.jar $path] ) && $reply != 2
+			} {
+				if {$reply == 3} continue
+
+				set reply [tk_dialog .foo \
+					[mc {Extension mismatch}] \
+					[mc "Do you want to import this?\n%s" [file nativename $dropFile]] \
+					warning 3 [mc Yes] [mc No] [mc {Yes to all}] [mc {No to all}]]
+
+				if {$reply == 3 || $reply == 1} continue
+			} else {
+				lappend qualified $path
+			}
+		}
+		variable cappLabel [file tail [lindex $qualified 0]]
+		if {[llength $qualified] > 1} {
+			set cappLabel [mc {%1$s and %2$d others} $cappLabel [expr [llength $qualified] - 1]]
+		}
+		return $qualified
+	}
 
 	# Drag and Drop 바인딩 부분
 	tkdnd::drop_target register . DND_Files
 
 	bind . <<Drop:DND_Files>> {
-		set dropFiles %D
+		set dropPaths %D
 		set forceBreak false
 		set reply {}
-		
-		foreach dropFile $dropFiles {
-			if {![regexp {.*\.apk} $dropFile] && $reply != 2} {
-				if {$reply == 3} continue
-				
-				set reply [tk_dialog .foo \
-					[mc {Extension mismatch}] \
-					[mc "Do you want to import this?\n%s" [file nativename $dropFile]] \
-					warning 3 [mc Yes] [mc No] [mc {Yes to all}] [mc {No to all}]]
-				
-				if {$reply == 3 || $reply == 1} continue
-			}
-			
-			if {![file readable $dropFile] && [file writable $dropFile]} {
-				set forceBreak true
-				set errorFile $dropFile
-				break
-			}
-		}
+
+		set ::cappPaths [importFiles $dropPaths]
+
 		if $forceBreak {
 			Print [mc {Cannot access to %s} $errorFile]
 		}
@@ -261,9 +275,9 @@ namespace eval GUI {
 	proc TraverseCApp methodName {
 		global cAppPaths
 		variable currentOp
-		
+
 		if [running_other_task?] return
-		
+
 		if {[info args $methodName] != "apkPath"} {
 			$methodName
 			return
@@ -279,6 +293,7 @@ namespace eval GUI {
 			}
 		} finally {set currentOp ""}
 	}
+
 }
 
 ::GUI::init

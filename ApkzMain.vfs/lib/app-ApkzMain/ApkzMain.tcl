@@ -44,6 +44,7 @@ array set config {
 	enableHistory true
 	installConserveData -r
 	uninstallConserveData -k
+	askExtension {}
 }
 
 array set hist {
@@ -51,8 +52,8 @@ array set hist {
 	ip {}
 }
 
-source $libpath/ApkzDbg.tcl
 source $libpath/Utility.tcl
+source $libpath/ApkzDbg.tcl
 source $libpath/ApkzGUI.tcl
 
 # 임시파일 제거

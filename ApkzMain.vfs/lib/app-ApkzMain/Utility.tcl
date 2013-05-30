@@ -8,7 +8,7 @@ proc scan_dir {dirname pattern} {
 	foreach d [glob -type d -nocomplain -dir $dirname *] {
 		set out [concat $out [scan_dir $d $pattern]]
 	}
-	concat $out [glob -type f -nocomplain -dir $dirname $pattern]
+	concat $out [glob -type f -nocomplain -dir $dirname {*}$pattern]
 }
 
 proc bgopen_handler {callback chan} {
@@ -73,22 +73,40 @@ proc httpcopy {url {file ""}} {
 
 	#전역범위의 '배열'이라서 upvar처리를 해야한다.
 	upvar #0 $token state
-	if ![info exist state] error
-	# HTTP 리다이렉션 처리. dict는 대소문자 구분이 힘들어 안 됨.
+	if ![info exist state] {error 1}
+
+	# HTTP 리다이렉션 처리.
+	# 1. 헤더를 이용한 방법. dict는 대소문자 구분이 힘들어 안 됨.
 	foreach {name value} $state(meta) {
 		if {[regexp -nocase ^location$ $name]} {
 			return [httpcopy [string trim $value] $file]
 		}
 	}
 	
+	# 2. 자바스크립트를 이용한 방법 
+	set data [::http::data $token]
+	if [regexp -nocase {<.*script.*>.*location\.href=['"]?([^'"]*)['"]?.*</script>} $data whole redir] {
+		puts $redir
+		return [httpcopy [string trim $redir] $file]
+	}
+	if [regexp -nocase {<.*script.*>.*location\.replace(['"]?([^'"]*)['"]?).*</script>} $data whole redir] {
+		puts $redir
+		return [httpcopy [string trim $redir] $file]
+	}
+	
+	# 3. 메타태그를 이용한 방법
+	if [regexp -nocase {<meta\s+http-equiv\s+=.*refresh.*url=['"]?([^'"]*)['"]?>} $data whole redir] {
+		return [httpcopy [string trim $redir] $file]
+	}
+	
 	if {$file != ""} {
 		set out [open $file wb]
 		fconfigure $out -encoding binary -translation binary
-		puts -nonewline $out [::http::data $token]
+		puts -nonewline $out $data
 		close $out
 		::http::cleanup $token
 	} {
-		set ret [::http::data $token]
+		set ret $data
 		::http::cleanup $token
 		return $ret
 	}
@@ -154,7 +172,6 @@ proc InputDlg {msg args} {
 }
 
 # 관리코드. dirname하위 모든 tcl파일의 메시지 카탈로그를 생성한다.
-# 
 proc mcExtract {dirname existing} {
 	lappend already {}
 	
@@ -174,23 +191,24 @@ proc mcExtract {dirname existing} {
 	}
 	set catalog [open $existing a]
 	fconfigure $catalog -encoding utf-8
-	puts $already
 	
 	foreach relPath [scan_dir $dirname *.tcl] {
 		set srcFile [open $relPath r]
 		set srcText [read $srcFile]
 		close $srcFile
 		
-		puts $catalog $relPath
-		foreach {whole focus} [regexp -all -inline {\[mc ([^]$]*)\]} $srcText] {
-			# puts "whole: $whole, focus: $focus"
+		# 이 정규식 만드는데 좀 어려웠음... 게다가 만들었음에도 결함가능성이 보임.
+		# 더 좋은 방법이 없을까.
+		foreach {whole quote} [regexp -all -inline {\[mc (\{[^\}]*\}|"[^"]*"|[^] ]*)} $srcText] {
+			set focus [lindex $quote 0]
+			if [string equal $focus $quote] {
+				set quote \{$quote\}
+			}
 			if {[lsearch -exact $already $focus] == -1} {
-				puts ":::: [lindex $focus 0]"
-				lappend already [lindex $focus 0]
-				puts $catalog "mcset $locale $focus {}"
+				lappend already $focus
+				puts $catalog "mcset $locale $quote {}"
 			}
 		}
-		puts $catalog {}
 	}
 	set ::already $already
 	close $catalog

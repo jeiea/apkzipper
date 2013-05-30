@@ -1,10 +1,12 @@
+# 전부 디버그때만 동작해야 할 부분. 릴리즈땐 없애야 한다.
+bind . <Escape> {destroy .}
+console show
+mcExtract . $::libpath/locale/ko.msg
+
 proc getcapp {} {
 	global cApp
 	GetNativePathArray $::cAppPaths cApp
 }
-
-bind . <Escape> {destroy .}
-console show
 
 # errorinfo는 번잡하다. 좀 가공해야지. proc 래핑이라 하는건가?
 # Tk에서 text위젯에 더블클릭 버그를 일으켰다. 뭐가 문젠 것 같은데.

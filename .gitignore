@@ -1,7 +1,13 @@
-ApkzMain.vfs - บนป็บป
+.buildpath
+.git
+.gitignore
+.project
+.settings
+Analyze
 binaries
 modding
 modding_
 place-apk-here-for-modding
 projects
+Release
 test.vfs
