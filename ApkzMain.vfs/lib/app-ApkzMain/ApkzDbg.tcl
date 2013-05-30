@@ -1,7 +1,6 @@
 # 전부 디버그때만 동작해야 할 부분. 릴리즈땐 없애야 한다.
-bind . <Escape> {destroy .}
 console show
-mcExtract . $::libpath/locale/ko.msg
+#mcExtract . $::libpath/locale/ko.msg
 
 proc getcapp {} {
 	global cApp

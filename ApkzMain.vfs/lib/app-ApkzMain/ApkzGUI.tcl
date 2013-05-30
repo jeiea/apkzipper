@@ -21,6 +21,7 @@ namespace eval GUI {
 	}
 
 	wm title . [mc {ApkZipper v1.9 alpha}]
+	bind . <Escape> {destroy .}
 	tooltip delay 50
 
 	proc menu.generate {} {
@@ -288,7 +289,7 @@ namespace eval GUI {
 			if [info exist cAppPaths] {
 				foreach apkPath $cAppPaths {
 					set ret [catch {$methodName $apkPath} {} errinfo]
-					if $ret {Print "ERROR $ret: [dict get $errinfo -errorinfo]\n"}
+					if $ret {Print "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"}
 				}
 			}
 		} finally {set currentOp ""}

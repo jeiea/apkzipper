@@ -69,6 +69,7 @@ proc AdaptPath file {file nativename [file normalize $file]}
 
 package require http
 proc httpcopy {url {file ""}} {
+	set url [string map {https:// http://} $url]
 	set token [::http::geturl $url -progress httpCopyProgress]
 
 	#전역범위의 '배열'이라서 upvar처리를 해야한다.
@@ -83,37 +84,19 @@ proc httpcopy {url {file ""}} {
 		}
 	}
 	
-	# 2. 자바스크립트를 이용한 방법 
 	set data [::http::data $token]
-	if [regexp -nocase {<.*script.*>.*location\.href=['"]?([^'"]*)['"]?.*</script>} $data whole redir] {
-		puts $redir
-		return [httpcopy [string trim $redir] $file]
-	}
-	if [regexp -nocase {<.*script.*>.*location\.replace(['"]?([^'"]*)['"]?).*</script>} $data whole redir] {
-		puts $redir
-		return [httpcopy [string trim $redir] $file]
-	}
-	
-	# 3. 메타태그를 이용한 방법
-	if [regexp -nocase {<meta\s+http-equiv\s+=.*refresh.*url=['"]?([^'"]*)['"]?>} $data whole redir] {
-		return [httpcopy [string trim $redir] $file]
-	}
-	
 	if {$file != ""} {
 		set out [open $file wb]
 		fconfigure $out -encoding binary -translation binary
 		puts -nonewline $out $data
 		close $out
-		::http::cleanup $token
-	} {
-		set ret $data
-		::http::cleanup $token
-		return $ret
 	}
+	::http::cleanup $token
+	return $data
 }
 
 proc httpCopyProgress {token total current} {
-	puts stderr "$current/$total\n"
+#	puts stderr "$current/$total\n"
 	flush stderr
 }
 

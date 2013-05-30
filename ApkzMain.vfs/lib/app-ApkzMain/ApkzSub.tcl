@@ -142,13 +142,13 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		return [bgopen ::GUI::Print $javapath {*}$args]
 	}
 
-	foreach jarfile {Apktool Signapk} {
+	foreach jarfile {apktool signapk} {
 		proc $jarfile args "
 			return \[Java -jar \[GetVFile $jarfile.jar] {*}\$args]
 		"
 	}
 
-	foreach exefile {Fastboot Optipng 7za aapt} {
+	foreach exefile {fastboot optipng 7za aapt} {
 		proc $exefile args "
 			return \[bgopen ::GUI::Print \[GetVFile $exefile.exe] {*}\$args]
 		"
@@ -166,7 +166,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 	proc Decompile apkPath {
 		GetNativePathArray $apkPath cApp
 
-		Apktool d {*}$::config(decomTargetOpt) -f $cApp(path) $cApp(proj)
+		apktool d {*}$::config(decomTargetOpt) -f $cApp(path) $cApp(proj)
 		7za -y x -o$cApp(proj) $cApp(path) META-INF -r
 	}
 
@@ -185,8 +185,8 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 			::GUI::Print [mc {apk compiling...}]\n
 		}
 
-		::GUI::Print "Apktool b -a [GetVFile aapt.exe] $cApp(proj) $cApp(unsigned)\n"
-		if [Apktool b -a [GetVFile aapt.exe] $cApp(proj) $cApp(unsigned)] {
+		::GUI::Print "apktool b -a [GetVFile aapt.exe] $cApp(proj) $cApp(unsigned)\n"
+		if [apktool b -a [GetVFile aapt.exe] $cApp(proj) $cApp(unsigned)] {
 			::GUI::Print [mc {Compile failed. Task terminated.}]\n
 			return
 		}
@@ -239,14 +239,14 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 
 		set frameworks [tk_getOpenFile -filetypes $types -multiple 1 -initialdir [file dirname $::vfsdir] -title [mc {Select framework file or folder}]]
 		if {$frameworks != ""} {
-			foreach framework $frameworks {Apktool if $framework}
+			foreach framework $frameworks {apktool if $framework}
 		}
 	}
 
 	proc Sign apkPath {
 		GetNativePathArray $apkPath cApp
 
-		if [Signapk -w [GetVFile testkey.x509.pem] [GetVFile testkey.pk8] $cApp(unsigned) $cApp(signed)] {
+		if [signapk -w [GetVFile testkey.x509.pem] [GetVFile testkey.pk8] $cApp(unsigned) $cApp(signed)] {
 			::GUI::Print "[mc {Signing failed}]: $cApp(name)\n"
 		} {
 			file delete -- $cApp(unsigned)
@@ -311,7 +311,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		GetNativePathArray $apkPath cApp
 
 		foreach pngfile [scan_dir $cApp(proj) *.png] {
-			Optipng $pngfile
+			optipng $pngfile
 		}
 
 	}
@@ -424,7 +424,8 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 			eval $exit
 		}
 
-		foreach ver [lsort -real -decreasing [dict keys $updateinfo]] {
+		set ret [catch {
+		foreach ver [lsort -decreasing [dict keys $updateinfo]] {
 			if {$ver <= $::apkzver} break
 			append changelog $ver
 			if [dict exist $updateinfo $ver distgrade] {
@@ -449,6 +450,8 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 			if [catch {httpcopy $downloadurl $updatefile}] break
 			puts $downloadurl
 		}
+		} {} errinfo]
+		if $ret {::GUI::Print "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"}
 
 		eval $exit
 	}
