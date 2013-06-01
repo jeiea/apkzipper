@@ -2,7 +2,7 @@
 namespace import ::msgcat::*
 
 mcset ko ApkZipper ApkZipper
-mcset ko {ApkZipper v1.9 alpha} {ApkZipper v1.9 alpha}
+mcset ko "ApkZipper %s %s" "ApkZipper %s %s"
 
 
 # Commons
@@ -74,6 +74,7 @@ mcset ko {Optimize png} {PNG 최적화}
 mcset ko {Recompress ogg} {OGG 재압축}
 mcset ko {Zip} {압축}
 mcset ko {Compile} {컴파일}
+mcset ko {System compile} {시스템 컴파일}
 mcset ko {Sign} {사인}
 mcset ko {Zipalign} {압축정렬}
 mcset ko {Install} {설치하기}
@@ -105,7 +106,6 @@ mcset ko {Retry with conserving data} {데이터를 보존하면서 재설치}
 mcset ko {Retry with removing data} {데이터를 삭제하면서 재설치}
 mcset ko {Waiting for device... Aborting is Ctrl+C} {휴대폰 연결을 기다리는 중... 취소하려면 Ctrl+C를 눌러주세요}
 mcset ko {Type path of android file} {안드로이드 파일경로를 입력하세요}
-mcset ko {Cannot find java.} {자바를 찾을 수 없습니다. 자바 설치하셨나요?}
 mcset ko {Please extract/decompile app first.} {먼저 앱을 압축해제/디컴파일 해주세요.}
 mcset ko {jar compiling...} {jar 컴파일 중...}
 mcset ko {apk compiling...} {apk 컴파일 중...}
@@ -122,13 +122,21 @@ mcset ko { finished.} { 완료.}
 mcset ko {ADB logcat executed} {폰 로그 기록이 시작되었습니다}
 mcset ko {ADB logcat terminated} {폰 로그 기록이 종료되었습니다}
 mcset ko {Connecting...} {접속 중...}
-mcset ko {ADB connecting... } {접속 중... }
+mcset ko {ADB connecting...} {접속 중... }
 mcset ko {Checking update..} {업데이트 확인 중..}
+mcset ko {There are no updates available.} {현재 최신버전을 사용 중 입니다.}
+mcset ko {New version found!} {새 버전을 찾았습니다!}
+mcset ko {Do you want to update?} {업데이트 하겠습니까?}
 mcset ko {Update info not found. Please check website.} {업데이트 정보를 찾지 못했습니다. 홈페이지에서 최신버전을 확인해주세요.}
-mcset ko "New version found!\nDo you want to update?" "새 버전을 찾았습니다!\n업데이트 하겠습니까?"
 mcset ko "You choosed %s.\nis this right? this task is unrecovable." "%s를 골랐습니다.\n이 작업은 취소할 수 없습니다. 계속하겠습니까?"
+mcset ko "Java not found.\nTo solve this problem, install JRE or JDK." "자바를 찾지 못했습니다.\n자바 런타임을 설치해주세요."
 
 mcset ko {%1$s and %2$d others} {%1$s 외 %2$d개}
+mcset ko {Downloading...} {다운로드 중...}
+mcset ko {Please connect to device first.} {먼저 폰을 연결해주세요.}
+
+
+mcset ko "File name malformed.\nPlease retry after rename. (e.g. test.apk)" "파일 이름이 잘못되었습니다.\n파일이름을 간단하게 바꾼 후 시도해주세요."
 
 # Dummy
 
@@ -142,4 +150,3 @@ mcset ko {$proc2} {}
 mcset ko {ADB $cmd} {}
 mcset ko {$detail} {}
 mcset ko "(\{\[^\}" {}
-mcset ko {ADB connecting...} {}

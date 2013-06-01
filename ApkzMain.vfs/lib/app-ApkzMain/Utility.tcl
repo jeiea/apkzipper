@@ -12,12 +12,18 @@ proc scan_dir {dirname pattern} {
 }
 
 proc bgopen_handler {callback chan} {
-	{*}$callback [read $chan]
+	append ::bgData($chan) [set data [read $chan]]
+	{*}$callback $data
+	
 	if {[eof $chan]} {
 		fconfigure $chan -blocking true
-		set ::bgAlive($chan) [catch {close $chan} {} erropt]
-		if $::bgAlive($chan) {
-			{*}$callback "\n[mc ERROR] $::bgAlive($chan): [dict get $erropt -errorinfo]\n"
+		set isErr [catch {close $chan} errmsg ::bgAlive($chan)]
+		if $isErr {
+			# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
+			# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
+			dict set ::bgAlive($chan) -errormsg $errmsg
+			dict set ::bgAlive($chan) -stdout $::bgData($chan)
+			unset ::bgData($chan)
 		}
 	}
 }
@@ -27,9 +33,14 @@ proc bgopen {callback args} {
 	fconfigure $chan -blocking false
 	fileevent $chan readable [list bgopen_handler $callback $chan]
 	vwait ::bgAlive($chan)
+
 	set ret $::bgAlive($chan)
 	unset ::bgAlive($chan)
-	return $ret
+	if {[dict get $ret -code] == 1} {
+		# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
+		error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
+	}
+	return 0
 }
 
 # 파이썬의 range랑 같다. 리눅스의 seq랑 같은지는 모르겠지만.
@@ -85,7 +96,7 @@ proc httpcopy {url {file ""}} {
 	}
 	
 	set data [::http::data $token]
-	if {$file != ""} {
+	if {$file != {}} {
 		set out [open $file wb]
 		fconfigure $out -encoding binary -translation binary
 		puts -nonewline $out $data
@@ -96,11 +107,21 @@ proc httpcopy {url {file ""}} {
 }
 
 proc httpCopyProgress {token total current} {
-#	puts stderr "$current/$total\n"
-	flush stderr
+	if $total {
+		if ![winfo exist .t] {
+			pack [ttk::progressbar [toplevel .t].pb -length 300]
+			wm title .t [mc {Downloading...}]
+			bind .t <Destroy> [list ::http::cleanup $token]
+		}
+		.t.pb config -value [expr $current  * 100 / $total]
+	}
+	if {$total == $current} {
+		bind .t <Destroy> {}
+		destroy .t
+	}
 }
 
-proc max args {
+proc max {args} {
 	if ![llength $args] return
 	set ret [lindex $args 0]
 	foreach item $args {
@@ -111,7 +132,7 @@ proc max args {
 	return $ret
 }
 
-proc min args {
+proc min {args} {
 	if ![llength $args] return
 	set ret [lindex $args 0]
 	foreach item $args {
@@ -141,7 +162,6 @@ proc InputDlg {msg args} {
 		bind $widget <Escape> {destroy .pul}
 	}
 	bind .pul.entry <Return> [subst {
-		puts \[.pul.entry get\]
 		set ::inputvalue$id \[.pul.entry get\]
 		destroy .pul
 	}]
@@ -182,14 +202,14 @@ proc mcExtract {dirname existing} {
 		
 		# 이 정규식 만드는데 좀 어려웠음... 게다가 만들었음에도 결함가능성이 보임.
 		# 더 좋은 방법이 없을까.
-		foreach {whole quote} [regexp -all -inline {\[mc (\{[^\}]*\}|"[^"]*"|[^] ]*)} $srcText] {
+		foreach {whole quote} [regexp -all -inline {\[mc (\{[^\}]*\}|"[^"]*"|[^]]*)} $srcText] {
 			set focus [lindex $quote 0]
 			if [string equal $focus $quote] {
 				set quote \{$quote\}
 			}
 			if {[lsearch -exact $already $focus] == -1} {
 				lappend already $focus
-				puts $catalog "mcset $locale $quote {}"
+				puts $catalog "mcset $locale $quote $quote"
 			}
 		}
 	}

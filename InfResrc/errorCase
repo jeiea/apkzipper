@@ -1,0 +1,35 @@
+파일이 어플파일이 아닐 때(.wma 파일 집어넣음)의 에러메시지
+Exception in thread "main" brut.androlib.AndrolibException: brut.directory.DirectoryException: java.util.zip.ZipException: error in opening zip file
+	at brut.androlib.ApkDecoder.hasSources(ApkDecoder.java:199)
+	at brut.androlib.ApkDecoder.decode(ApkDecoder.java:83)
+	at brut.apktool.Main.cmdDecode(Main.java:146)
+	at brut.apktool.Main.main(Main.java:77)
+Caused by: brut.directory.DirectoryException: java.util.zip.ZipException: error in opening zip file
+	at brut.directory.ZipRODirectory.<init>(ZipRODirectory.java:55)
+	at brut.directory.ZipRODirectory.<init>(ZipRODirectory.java:38)
+	at brut.androlib.res.util.ExtFile.getDirectory(ExtFile.java:55)
+	at brut.androlib.ApkDecoder.hasSources(ApkDecoder.java:197)
+	... 3 more
+Caused by: java.util.zip.ZipException: error in opening zip file
+	at java.util.zip.ZipFile.open(Native Method)
+	at java.util.zip.ZipFile.<init>(Unknown Source)
+	at java.util.zip.ZipFile.<init>(Unknown Source)
+	at java.util.zip.ZipFile.<init>(Unknown Source)
+	at brut.directory.ZipRODirectory.<init>(ZipRODirectory.java:53)
+	... 6 more
+
+에러 1: child process exited abnormally
+    while executing
+"close $chan"
+
+7-Zip (a) 9.22 beta  Copyright (c) 1999-2011 Igor Pavlov  2011-04-18
+
+Processing archive: C:\Documents and Settings\All Users\Documents\My Music\음악 샘플\New Stories (Highway Blues).wma
+
+Error: Can not open file as archive
+
+
+에러 1: child process exited abnormally
+    while executing
+"close $chan"
+

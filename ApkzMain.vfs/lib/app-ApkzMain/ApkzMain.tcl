@@ -19,7 +19,8 @@ namespace import ::tcl::prefix
 set vfsdir [file dirname [file dirname $libpath]]
 set exedir [file dirname $vfsdir]
 set env(PATH) "[file dirname $vfsdir];$env(PATH)"
-set apkzver 0.1
+set apkzver 2.0
+set apkzDistver beta
 array set config {
 	zlevel	9
 	decomTargetOpt	"     "
@@ -32,8 +33,8 @@ array set config {
 		2	{Explore project}	{}
 		2	{Optimize png}		{}
 		2	{Recompress ogg}	{}
-		3	{Zip}				{}
-		3	{Compile}			{Zipalign}
+		3	{Zip}				{Zipalign}
+		3	{Compile}			{System compile}
 		3	{Sign}				{}
 		4	{Install}			{}
 		4	{Export to phone}	{}
@@ -52,15 +53,42 @@ array set hist {
 	ip {}
 }
 
+
 source $libpath/Utility.tcl
-source $libpath/ApkzDbg.tcl
 source $libpath/ApkzGUI.tcl
+if [string match *wish.exe [info nameofexecutable]] {
+	source $libpath/ApkzDbg.tcl
+}
+bind .p.f2.fLog.sb <Shift-3> {
+	catch {console show}
+}
+
+catch {
+	set data [dict create]
+	fconfigure [set configfile [open $env(appdata)/apkz.cfg r]] -encoding utf-8
+	set data [read $configfile]
+	close $configfile
+	if [dict exists $data hist] {
+		array set ::hist [dict get $data hist]
+	}
+}
+
+if {$::hist(recentApk) != {}} {
+	{::ModApk::Select app} $::hist(recentApk)
+}
 
 # 임시파일 제거
 bindtags . MAINWIN
 bind MAINWIN <Destroy> {
 	foreach fileName [array names vfsMap] {
 		file delete $vfsMap($fileName)
-		puts $vfsMap($fileName)
+	}
+
+	set data [dict create]
+	dict set data hist [array get ::hist]
+	catch {
+		fconfigure [set configfile [open $env(appdata)/apkz.cfg w]] -encoding utf-8
+		puts $configfile $data
+		close $configfile
 	}
 }

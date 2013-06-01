@@ -20,7 +20,7 @@ namespace eval GUI {
 
 	}
 
-	wm title . [mc {ApkZipper v1.9 alpha}]
+	wm title . [mc "ApkZipper %s %s" $::apkzver $::apkzDistver]
 	bind . <Escape> {destroy .}
 	tooltip delay 50
 
@@ -123,6 +123,7 @@ namespace eval GUI {
 	pack $under -side top -expand 1 -fill both
 	pack [text $under.tCmd -width 0 -height 0 -yscrollcommand "$under.sb set " -wrap char] -side left -fill both -expand 1
 	pack [ttk::scrollbar $under.sb -orient vertical -command "$under.tCmd yview "] -side right -fill both
+	
 	foreach ideal {"나눔고딕코딩" "맑은 고딕" "Consolas" "돋움체"} {
 		if {[lsearch [font families] $ideal] != -1} {
 			$under.tCmd config -font [list $ideal 9]
@@ -198,7 +199,7 @@ namespace eval GUI {
 		set reply $::config(askExtension)
 
 		foreach path $paths {
-			if {![file readable $path] && [file writable $path]} {
+			if ![file readable $path] {
 				::GUI::Print [mc {Access denied: %1$s} $path]
 				continue
 			} elseif [file isdirectory $path] {
@@ -212,14 +213,16 @@ namespace eval GUI {
 
 				set reply [tk_dialog .foo \
 					[mc {Extension mismatch}] \
-					[mc "Do you want to import this?\n%s" [file nativename $dropFile]] \
+					[mc "Do you want to import this?\n%s" [file nativename $path]] \
 					warning 3 [mc Yes] [mc No] [mc {Yes to all}] [mc {No to all}]]
 
 				if {$reply == 3 || $reply == 1} continue
+				lappend qualified $path
 			} else {
 				lappend qualified $path
 			}
 		}
+		
 		variable cappLabel [file tail [lindex $qualified 0]]
 		if {[llength $qualified] > 1} {
 			set cappLabel [mc {%1$s and %2$d others} $cappLabel [expr [llength $qualified] - 1]]
@@ -235,11 +238,8 @@ namespace eval GUI {
 		set forceBreak false
 		set reply {}
 
-		set ::cappPaths [importFiles $dropPaths]
+		{::ModApk::Select app} $dropPaths
 
-		if $forceBreak {
-			Print [mc {Cannot access to %s} $errorFile]
-		}
 		return %A
 	}
 
@@ -247,12 +247,12 @@ namespace eval GUI {
 		set cmd [lindex $command 0]
 		# HACK: 나중에 VFS처럼 만들어야... 이것도 좋지만 좀 더 깔끔하게
 		if {$cmd == 0} {
-			Print "::ModApk::Adb [lrange $command 1 end]"
-			::ModApk::Adb pull {*}[lrange $command 1 end]
+			Print "adb [lrange $command 1 end]"
+			{::ModApk::Adb pull} {*}[lrange $command 1 end]
 			return
 		}
 		if [string is digit $cmd] {
-			TraverseCApp [lindex $::config(btns) [expr $cmd * 3 + 1]]
+			TraverseCApp "::ModApk::[lindex $::config(btns) [expr $cmd * 3 + 1]]"
 		}
 	}
 
@@ -279,7 +279,7 @@ namespace eval GUI {
 
 		if [running_other_task?] return
 
-		if {[info args $methodName] != "apkPath"} {
+		if ![string match "apkPath*" [info args $methodName]] {
 			$methodName
 			return
 		}
@@ -288,8 +288,19 @@ namespace eval GUI {
 		try {
 			if [info exist cAppPaths] {
 				foreach apkPath $cAppPaths {
-					set ret [catch {$methodName $apkPath} {} errinfo]
-					if $ret {Print "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"}
+					if [catch {$methodName $apkPath} errmsg errinfo] {
+						if {[dict exist $errinfo -errorcode] && 
+							[dict get $errinfo -errorcode] == 100} {
+							Print "[mc ERROR]: $errmsg\n"
+						} {
+							# 이런식으로 짜는 걸 구조화시켜야...
+							if {[string first charset.MalformedInputException $errmsg] != -1} {
+								Print "[mc ERROR]: [mc "File name malformed.\nPlease retry after rename. (e.g. test.apk)"]\n"
+							} {
+								Print "[mc ERROR]: [dict get $errinfo -errorinfo]\n"
+							}
+						}
+					}
 				}
 			}
 		} finally {set currentOp ""}

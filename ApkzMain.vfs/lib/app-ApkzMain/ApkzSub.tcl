@@ -7,7 +7,6 @@ namespace eval ModApk {
 		[list [mc {All file}]          {*}        ] \
 	]
 
-	#proc Select_app {{default ""}}  ;#이건 나중에. 설정 지금넣기는 step by step하기 위해 미룬다.
 	proc {Select app} {args} {
 		variable types
 		global cAppPaths
@@ -16,7 +15,7 @@ namespace eval ModApk {
 
 		# 귀찮아서 일단 미리 지정해둠.
 		if {$args != {}} {
-			set cAppPaths $args
+			set cAppPaths [lindex $args 0]
 		} {
 			set cAppPaths [tk_getOpenFile -filetypes "$types" \
 				-multiple 1 -initialdir [file dirname $::vfsdir] \
@@ -24,10 +23,11 @@ namespace eval ModApk {
 		}
 
 		set cAppPaths [::GUI::ImportFiles $cAppPaths]
+		set ::hist(recentApk) $cAppPaths
 	}
 	
 	proc {Select app recent} {} {
-		{Select app} [file normalize "$::argv0/../../../../modding_/);(!d! %o%&붫\}.apk"]
+		{Select app} [file normalize "$::hist(recentApk)"]
 	}
 
 	proc GetNativePathArray {apkPath newVar} {
@@ -129,16 +129,16 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		if ![info exist javapath] {
 			set javapath [auto_execok java]
 			if {$javapath == ""} {
-				set candidate [glob -nocomplain ${env(SystemDrive)}/Program Files*/java/*/bin/java.exe]
+				set candidate [glob -nocomplain $::env(SystemDrive)/Program Files*/java/*/bin/java.exe]
 				if [llength $candidate] {set javapath [lindex $candidate 0]}
 			}
 		}
 
 		if {$javapath == {}} {
-			tk_messageBox -message [mc {Cannot find java.}] -icon error -type ok
-			return
+			error [mc "Java not found.\nTo solve this problem, install JRE or JDK."] {} 100
 		}
 
+		# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
 		return [bgopen ::GUI::Print $javapath {*}$args]
 	}
 
@@ -185,7 +185,6 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 			::GUI::Print [mc {apk compiling...}]\n
 		}
 
-		::GUI::Print "apktool b -a [GetVFile aapt.exe] $cApp(proj) $cApp(unsigned)\n"
 		if [apktool b -a [GetVFile aapt.exe] $cApp(proj) $cApp(unsigned)] {
 			::GUI::Print [mc {Compile failed. Task terminated.}]\n
 			return
@@ -288,9 +287,24 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		::GUI::Print [mc { finished.}]\n
 	}
 
+	proc isADBState args {
+		set state [exec [GetVFile adb.exe] get-state]
+		foreach check $args {
+			if {$state == $check} {
+				return true
+			}
+		}
+		return false
+	}
+
 	proc {Install} apkPath {
 		GetNativePathArray $apkPath cApp
 		
+		if ![isADBState device] {
+			::GUI::Print [mc {Please connect to device first.}]\n
+			return
+		}
+
 		foreach result {signed unsigned path} {
 			if [file exists $cApp($result)] {
 				set adbout [Adb install -r $cApp($result)]
@@ -298,7 +312,6 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 				break
 			}
 		}
-#		exec cmd /C start {ADB Install} [GetVFile adb.exe] install $apkPath &
 	}
 
 	proc {Explore project} apkPath {
@@ -414,45 +427,73 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		if [::GUI::running_other_task?] return
 
 		set ::currentOp "update"
-		set exit {set ::currentOp ""; return}
+		set exit {set ::currentOp ""; return 0}
+		set updateFileSignature {Apkz Update Information File}
+		
 		::GUI::Print [mc {Checking update..}]\n
 
 		::http::config -useragent "Mozilla/5.0 (compatible; MSIE 10.0; $::tcl_platform(os) $::tcl_platform(osVersion);)"
-		set updateinfo [httpcopy http://db.tt/L2vLwWpq]
-		if {$updateinfo == ""} {
+		set updateinfo [httpcopy http://db.tt/v7qgMqqN]
+		if ![string match $updateFileSignature* $updateinfo] {
 			::GUI::Print [mc {Update info not found. Please check website.}]\n
 			eval $exit
 		}
+		
+		set updateinfo [string map [list $updateFileSignature {}] $updateinfo]
 
 		set ret [catch {
-		foreach ver [lsort -decreasing [dict keys $updateinfo]] {
-			if {$ver <= $::apkzver} break
-			append changelog $ver
-			if [dict exist $updateinfo $ver distgrade] {
-				append changelog " [dict get $updateinfo $ver distgrade]"
+			foreach ver [dict keys $updateinfo] {
+				if {[package vcompare $ver $::apkzver] != 1} continue
+				append changelog $ver
+				if [dict exist $updateinfo $ver distgrade] {
+					append changelog " [dict get $updateinfo $ver distgrade]"
+				}
+				append changelog \n
+				if [dict exist $updateinfo $ver description] {
+					append changelog [dict get $updateinfo $ver description]\n
+				}
+				if {[llength [split $changelog \n]] > 11} {
+					append changelog ...
+					break
+				}
+				append changelog \n
 			}
-			append changelog \n
-			if [dict exist $updateinfo $ver description] {
-				append changelog [dict get $updateinfo $ver description]\n
-			}
-			if {[llength [split $changelog \n]] > 11} {
-				append changelog ...
-				break
-			}
-			append changelog \n
-		}
-		set ans [tk_dialog .updateDlg [mc "New version found!\nDo you want to update?"] [string trim $changelog] {} [mc Yes] [mc Yes] [mc No]]
-		if {$ans == 1} $exit
 
-		set latestver [max {*}[dict keys $updateinfo]]
-		set updatefile [AdaptPath [file normalize "$::vfsdir/../Apkzipper v$latestver.7z"]]
-		foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
-			if [catch {httpcopy $downloadurl $updatefile}] break
-			puts $downloadurl
-		}
+			set latestver 0
+			foreach ver [dict keys $updateinfo] {
+				if {[package vcompare $ver $latestver] == 1} {
+					set latestver $ver
+				}
+			}
+			if {$latestver == $::apkzver} {
+				::GUI::Print [mc {There are no updates available.}]\n
+				return
+			}
+			
+			set ans [tk_dialog .updateDlg [mc {New version found!}] \
+				"[mc {Do you want to update?}]\n\n[string trim $changelog]" \
+				{} [mc Yes] [mc Yes] [mc No]]
+			if {$ans == 1} $exit
+
+			if [dict exist $updateinfo $latestver filename] {
+				set filename [dict get $updateinfo $latestver filename]
+			} {
+				set filename {Apkzipper.exe}
+			}
+			set updatefile [AdaptPath [file normalize "$::vfsdir/../$filename"]]
+			
+			foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
+				set success [catch {httpcopy $downloadurl $updatefile}]
+				if {$success == 0} {
+					catch {exec [auto_execok explorer.exe] [file nativename [file dirname $updatefile]]}
+					break
+				}
+			}
 		} {} errinfo]
-		if $ret {::GUI::Print "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"}
 
+		if {$ret == 1} {
+			::GUI::Print "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"
+		}
 		eval $exit
 	}
 }
