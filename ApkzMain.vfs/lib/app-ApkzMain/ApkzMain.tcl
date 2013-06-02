@@ -39,7 +39,7 @@ array set config {
 		4	{Install}			{}
 		4	{Export to phone}	{}
 	}
-	mod1	<1>
+	mod1	<ButtonRelease-1>
 	mod2	<ButtonRelease-3>
 	actionAfterConnect {}
 	enableHistory true
@@ -53,12 +53,13 @@ array set config {
 array set hist {
 	recentApk {}
 	ip {}
+	lastBrowsePath .
 }
 
 
 source $libpath/Utility.tcl
 source $libpath/ApkzGUI.tcl
-if [string match *wish.exe [info nameofexecutable]] {
+if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 	source $libpath/ApkzDbg.tcl
 }
 bind .p.f2.fLog.sb <Shift-3> {

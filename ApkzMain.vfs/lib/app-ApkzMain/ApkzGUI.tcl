@@ -103,11 +103,8 @@ namespace eval GUI {
 		# 생성과 바인딩
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
-		pack [ttk::button $path -text "$count. [mc $proc]"] -padx 3 -expand true -fill both
-
-		if {$proc != ""} {
-			bind $path $::config(mod1) "::GUI::TraverseCApp {::ModApk::$proc}"
-		}
+		pack [ttk::button $path -text "$count. [mc $proc]" \
+			-command "::GUI::TraverseCApp {::ModApk::$proc}"] -padx 3 -expand true -fill both
 
 		# 두번째 바인딩
 		if {$proc2 != ""} {

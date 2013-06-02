@@ -17,7 +17,7 @@ namespace eval ModApk {
 		return $someFilename
 	}
 
-	proc filterFiles paths {
+	proc filterAndLoad paths {
 		set qualified [list]
 		set reply $::config(askExtension)
 
@@ -46,7 +46,8 @@ namespace eval ModApk {
 			}
 		}
 
-		return $qualified
+		set ::cAppPaths $qualified
+		set ::GUI::cappLabel [makeSessionName $::cAppPaths]
 	}
 
 	proc {Select app} {args} {
@@ -60,14 +61,17 @@ namespace eval ModApk {
 			set cAppPaths [lindex $args 0]
 		} {
 			set cAppPaths [tk_getOpenFile -filetypes "$types" \
-				-multiple 1 -initialdir [file dirname $::vfsdir] \
+				-multiple 1 -initialdir $::hist(lastBrowsePath) \
 				-title [mc {You can select multiple files or folders}]]
+			
+			# 같은 구문이 나조차 보기 심히 안 좋지만, initialdir이 바뀌는 걸 사용자가
+			# 예상하지 못하는 걸 막기 위함
+			if {$cAppPaths == {}} return
+			set ::hist(lastBrowsePath) [file dirname [lindex $cAppPaths 0]]
 		}
 		
-		set cAppPaths [filterFiles $cAppPaths]
-		set ::GUI::cappLabel [makeSessionName $cAppPaths]
+		filterAndLoad $cAppPaths
 		if {$cAppPaths == {}} return
-		
 		if {[lsearch [getRecentSessionNames] $::GUI::cappLabel] == -1} {
 			set ::hist(recentApk) [concat [list $cAppPaths] $::hist(recentApk)]
 		}
@@ -154,9 +158,32 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 	}
 
 	proc Adb_waitfor cmd {
-		::twapi::create_process {} -cmdline "cmd /C echo [mc {Waiting for device... Aborting is Ctrl+C}] & \
-			[::ModApk::GetVFile adb.exe] wait-for-device & [::ModApk::GetVFile adb.exe] [string tolower $cmd]" \
-			-title [mc "ADB $cmd"] -newconsole 1 -inherithandles 1
+		set cmdline "cmd /C echo [mc {Waiting for device... Aborting is Ctrl+C}] & "
+		append cmdline "[::ModApk::GetVFile adb.exe] wait-for-device & "
+		append cmdline "[::ModApk::GetVFile adb.exe] [string tolower $cmd]"
+		
+		::twapi::allocate_console
+		::twapi::create_process {} -cmdline $cmdline -title [mc "ADB $cmd"] -detached 0 -inherithandles 1
+		::twapi::set_console_control_handler {
+			::twapi::free_console
+			return 1
+		}
+#		::twapi::set_standard_handle stdin [set dupin [::twapi::duplicate_handle [::twapi::get_standard_handle stdin]]]
+#		::twapi::set_standard_handle stdout [set dupout [::twapi::duplicate_handle [::twapi::get_standard_handle stdout]]]
+#		::twapi::set_standard_handle stderr [set duperr [::twapi::duplicate_handle [::twapi::get_standard_handle stderr]]]
+		
+
+#		set a [::twapi::create_console_screen_buffer]
+#		::twapi::set_console_active_screen_buffer $a
+		set hConOut [::twapi::get_console_handle stdout]
+#		::twapi::set_console_screen_buffer_size $hConOut {80 25}
+
+		set bufferInfo [::twapi::get_console_screen_buffer_info $hConOut -all]
+		set idealSize [dict get $bufferInfo -windowlocation]
+		lset idealSize 2 [expr [lindex $idealSize 2] - 2]
+		lset idealSize 3 [expr [lindex $idealSize 3] - 2]
+		::twapi::set_console_window_location $hConOut $idealSize
+		::twapi::free_console
 	}
 	
 	proc {Import from phone} args {
@@ -383,9 +410,9 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		catch {exec explorer $cApp(proj)}
 	}
 	
-	proc {Explore app dir} apkPath {
-		GetNativePathArray $apkPath cApp
-		catch {exec explorer [AdaptPath $cApp(path)]}
+	proc {Explore app dir} {} {
+		set samplePath [lindex $::cAppPaths 0]
+		catch {exec explorer [AdaptPath [file dirname $samplePath]]}
 	}
 
 	proc {Optimize png} apkPath {
@@ -412,7 +439,6 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		if ![file exist $cApp(proj) {Extract $apkPath}
 		if [file exist $cApp(proj)/META-INF] {
 			file delete -force -- $cApp(proj)/META-INF
-			set prompt 삭제함.
 		} {
 			7za -y x -o$cApp(proj) $cApp(path) META-INF -r
 		}
