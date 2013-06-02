@@ -2,9 +2,12 @@
 console show
 mcExtract . $::libpath/locale/ko.msg
 
-proc getcapp {} {
-	global cApp
-	GetNativePathArray $::cAppPaths cApp
+proc pval {args} {
+	foreach varname $args {
+		upvar $varname value
+		puts "$varname: $value"
+	}
+	puts {} 
 }
 
 # errorinfo는 번잡하다. 좀 가공해야지. proc 래핑이라 하는건가?
@@ -24,7 +27,7 @@ proc getcapp {} {
 #		return $ret} $body]
 #}
 
-# 재귀적으로 verbose걸어버리면 편할 텐데. 이따가 수정하자
+# 재귀적으로 verbose걸어버리면 편할 텐데. 근데... 무진장 어렵다. 변수값만 확인하는게 ㅡㅡ;;
 proc verbose_eval {script} {
 	set cmd ""
 	foreach line [split $script \n] {
@@ -36,5 +39,24 @@ proc verbose_eval {script} {
 			set cmd ""
 		}
 	}
+}
+
+# http://wiki.tcl.tk/16183
+proc stacktrace {} {
+	set stack "Stack trace:\n"
+	for {set i 1} {$i < [info level]} {incr i} {
+		set lvl [info level -$i]
+#		set pname [lindex $lvl 0]
+		set pname [uplevel $i "namespace which [list [lindex $lvl 0]]"]
+		append stack [string repeat " " $i]$pname
+		foreach value [lrange $lvl 1 end] arg [info args $pname] {
+			if {$value eq ""} {
+				info default $pname $arg value
+			}
+			append stack " $arg='$value'"
+		}
+		append stack \n
+	}
+	return $stack
 }
 

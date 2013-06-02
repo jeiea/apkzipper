@@ -32,8 +32,8 @@ namespace eval GUI {
 			{&Config}		[set mConfig	[menu .mbar.config]			] \
 			{&SDK Function}	[set mSdk		[menu .mbar.sdk]			] \
 			{&Etc Function}	[set mEtc		[menu .mbar.etc -tearoff 0]	] \
-			{Zip level}		[menu 			$mConfig.zlevel -tearoff 0] \
-			{Decompile target} [menu 		$mConfig.target -tearoff 0] \
+			{Zip level}						[menu $mConfig.zlevel -tearoff 0] \
+			{Decompile target}				[menu $mConfig.target -tearoff 0] \
 		] {
 			set markRemoved [string map {& {}} [mc $label]]
 			[winfo parent $menu] add cascade -label $markRemoved \
@@ -103,8 +103,11 @@ namespace eval GUI {
 		# 생성과 바인딩
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
-		pack [ttk::button $path -text "$count. [mc $proc]" \
-			-command "::GUI::TraverseCApp {::ModApk::$proc}"] -padx 3 -expand true -fill both
+		pack [ttk::button $path -text "$count. [mc $proc]"] -padx 3 -expand true -fill both
+
+		if {$proc != ""} {
+			bind $path $::config(mod1) "::GUI::TraverseCApp {::ModApk::$proc}"
+		}
 
 		# 두번째 바인딩
 		if {$proc2 != ""} {
@@ -193,42 +196,6 @@ namespace eval GUI {
 
 	wm minsize . 450 200
 	wm geometry . 640x480
-
-	proc ImportFiles paths {
-		set qualified [list]
-		set reply $::config(askExtension)
-
-		foreach path $paths {
-			if ![file readable $path] {
-				::GUI::Print [mc {Access denied: %1$s} $path]
-				continue
-			} elseif [file isdirectory $path] {
-				lappend paths [glob $path {*.apk *.jar}]
-				continue
-			} elseif {!(
-				[string match -nocase *.apk $path] ||
-				[string match -nocase *.jar $path] ) && $reply != 2
-			} {
-				if {$reply == 3} continue
-
-				set reply [tk_dialog .foo \
-					[mc {Extension mismatch}] \
-					[mc "Do you want to import this?\n%s" [file nativename $path]] \
-					warning 3 [mc Yes] [mc No] [mc {Yes to all}] [mc {No to all}]]
-
-				if {$reply == 3 || $reply == 1} continue
-				lappend qualified $path
-			} else {
-				lappend qualified $path
-			}
-		}
-		
-		variable cappLabel [file tail [lindex $qualified 0]]
-		if {[llength $qualified] > 1} {
-			set cappLabel [mc {%1$s and %2$d others} $cappLabel [expr [llength $qualified] - 1]]
-		}
-		return $qualified
-	}
 
 	# Drag and Drop 바인딩 부분
 	tkdnd::drop_target register . DND_Files

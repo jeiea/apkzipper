@@ -143,6 +143,14 @@ proc min {args} {
 	return $ret
 }
 
+proc getChildsRecursive {win} {
+	set ret {}
+	foreach child [winfo children $win] {
+		lappend ret $child
+		set ret [concat $ret [allChildsWidget $child]]
+	}
+	return $ret
+}
 
 proc InputDlg {msg args} {
 	set id [string map {. {}} [expr rand()]]
@@ -151,12 +159,9 @@ proc InputDlg {msg args} {
 	toplevel .pul
 	wm title .pul [mc {Input}]
 
-	if {$args != {}} {
-		set args [list -text $args]
-	}
 	pack [ttk::label .pul.label -text $msg] -side top
-	pack [ttk::entry .pul.entry] -side bottom -fill x
-	.pul.entry insert 0 $args
+	pack [ttk::combobox .pul.entry -values [lrange $args 1 end]] -side bottom -fill x
+	.pul.entry insert 0 [lindex $args 0]
 	.pul.entry selection range 0 end
 	foreach widget {.pul .pul.label .pul.entry} {
 		bind $widget <Escape> {destroy .pul}
@@ -165,6 +170,8 @@ proc InputDlg {msg args} {
 		set ::inputvalue$id \[.pul.entry get\]
 		destroy .pul
 	}]
+	bind .pul <Destroy> "set ::inputvalue$id {}"
+	
 	raise .pul
 	focus .pul.entry
 
@@ -216,3 +223,4 @@ proc mcExtract {dirname existing} {
 	set ::already $already
 	close $catalog
 }
+

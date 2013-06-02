@@ -30,7 +30,7 @@ array set config {
 		0	{Select app}		{Select app recent}
 		1	{Extract}			{}
 		1	{Decompile}			{Install framework}
-		2	{Explore project}	{}
+		2	{Explore project}	{Explore app dir}
 		2	{Optimize png}		{}
 		2	{Recompress ogg}	{}
 		3	{Zip}				{Zipalign}
@@ -46,6 +46,8 @@ array set config {
 	installConserveData -r
 	uninstallConserveData -k
 	askExtension {}
+	maxRecentSession 10
+	maxInputHistory 5
 }
 
 array set hist {
@@ -74,7 +76,7 @@ catch {
 }
 
 if {$::hist(recentApk) != {}} {
-	{::ModApk::Select app} $::hist(recentApk)
+	{::ModApk::Select app} [lindex $::hist(recentApk) 0]
 }
 
 # 임시파일 제거

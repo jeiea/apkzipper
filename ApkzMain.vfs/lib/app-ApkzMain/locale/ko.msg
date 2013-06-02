@@ -70,6 +70,7 @@ mcset ko {Extract} {압축풀기}
 mcset ko {Decompile} {디컴파일}
 mcset ko {Install framework} {프레임워크 설치}
 mcset ko {Explore project} {작업폴더 열기}
+mcset ko {Explore app dir} {앱이있는 폴더 열기}
 mcset ko {Optimize png} {PNG 최적화}
 mcset ko {Recompress ogg} {OGG 재압축}
 mcset ko {Zip} {압축}

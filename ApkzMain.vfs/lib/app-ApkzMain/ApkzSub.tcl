@@ -1,4 +1,5 @@
 namespace eval ModApk {
+	variable systemcompile {}
 	
 	set types [list \
 		[list [mc {All readable file}] {.apk .jar}] \
@@ -6,6 +7,47 @@ namespace eval ModApk {
 		[list [mc {Jar file}]          {.jar}     ] \
 		[list [mc {All file}]          {*}        ] \
 	]
+	
+	proc makeSessionName apps {
+		set someFilename [file tail [lindex $apps 0]]
+		set num [llength $apps]
+		if {$num > 1} {
+			return [mc {%1$s and %2$d others} $someFilename [expr $num - 1]]
+		}
+		return $someFilename
+	}
+
+	proc filterFiles paths {
+		set qualified [list]
+		set reply $::config(askExtension)
+
+		foreach path $paths {
+			if ![file readable $path] {
+				::GUI::Print [mc {Access denied: %1$s} $path]\n
+				continue
+			} elseif [file isdirectory $path] {
+				lappend paths [glob $path {*.apk *.jar}]
+				continue
+			} elseif {!(
+				[string match -nocase *.apk $path] ||
+				[string match -nocase *.jar $path] ) && $reply != 2
+			} {
+				if {$reply == 3} continue
+
+				set reply [tk_dialog .foo \
+					[mc {Extension mismatch}] \
+					[mc "Do you want to import this?\n%s" [file nativename $path]] \
+					warning 3 [mc Yes] [mc No] [mc {Yes to all}] [mc {No to all}]]
+
+				if {$reply == 3 || $reply == 1} continue
+				lappend qualified $path
+			} else {
+				lappend qualified $path
+			}
+		}
+
+		return $qualified
+	}
 
 	proc {Select app} {args} {
 		variable types
@@ -21,13 +63,29 @@ namespace eval ModApk {
 				-multiple 1 -initialdir [file dirname $::vfsdir] \
 				-title [mc {You can select multiple files or folders}]]
 		}
-
-		set cAppPaths [::GUI::ImportFiles $cAppPaths]
-		set ::hist(recentApk) $cAppPaths
+		
+		set cAppPaths [filterFiles $cAppPaths]
+		set ::GUI::cappLabel [makeSessionName $cAppPaths]
+		if {$cAppPaths == {}} return
+		
+		if {[lsearch [getRecentSessionNames] $::GUI::cappLabel] == -1} {
+			set ::hist(recentApk) [concat [list $cAppPaths] $::hist(recentApk)]
+		}
+	}
+	
+	proc getRecentSessionNames {} {
+		return [lmap apkList $::hist(recentApk) {makeSessionName $apkList}]
 	}
 	
 	proc {Select app recent} {} {
-		{Select app} [file normalize "$::hist(recentApk)"]
+		destroy .recentPop
+		set m [menu .recentPop -tearoff 0]
+		foreach recentApks $::hist(recentApk) {
+			$m add command -label [makeSessionName $recentApks] \
+				-command [namespace code "{Select app} [list $recentApks]"]
+		}
+		
+		tk_popup .recentPop [winfo pointerx .] [winfo pointery .]
 	}
 
 	proc GetNativePathArray {apkPath newVar} {
@@ -139,7 +197,7 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		}
 
 		# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
-		return [bgopen ::GUI::Print $javapath {*}$args]
+		return [bgopen ::GUI::Print {*}$javapath {*}$args]
 	}
 
 	foreach jarfile {apktool signapk} {
@@ -208,6 +266,16 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		file delete -force -- $cApp(proj)\\temp
 	}
 
+	proc {System compile} apkPath {
+		variable systemcompile {
+			foreach metafile {resources.arsc AndroidManifest.xml} {
+				7za -y x -aoa -o[file nativename $cApp(proj)/temp] $cApp(path) $metafile
+			}
+		}
+		Compile $apkPath
+		set systemcompile {}
+	}
+
 	proc Zip apkPath {
 		GetNativePathArray $apkPath cApp
 
@@ -219,18 +287,6 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		::GUI::Print Compressing...
 		file delete -- $cApp(unsigned)
 		7za -y a -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\*
-	}
-
-	proc {System compile} apkPath {
-		variable systemcompile {
-			if {$args != {}} {
-				foreach metafile {resources.arsc AndroidManifest.xml} {
-				7za -y x -aoa -o$cApp(proj)\\temp $cApp(path) $metafile
-				}
-			}
-		}
-		Compile $apkPath
-		set systemcompile {}
 	}
 
 	proc {Install framework} {} {
@@ -280,10 +336,11 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		} {
 			set ::pushPath $dstPath
 		}
+		set resultPath [getResult $apkPath]
 		if [string is space $::pushPath] return
-		::GUI::Print "$apkPath $::pushPath\n"
+		::GUI::Print "$resultPath $::pushPath\n"
 		::GUI::Print [mc Pushing...]
-		Adb push $apkPath $::pushPath
+		Adb push $resultPath $::pushPath
 		::GUI::Print [mc { finished.}]\n
 	}
 
@@ -297,27 +354,38 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 		return false
 	}
 
+	# return latest apk including original.
+	proc getResult _apkPath {
+		GetNativePathArray $_apkPath cApp
+		foreach result {signed unsigned path} {
+			if [file exists $cApp($result)] {
+				return $cApp($result)
+			}
+		}
+		return
+	}
+	
 	proc {Install} apkPath {
-		GetNativePathArray $apkPath cApp
-		
 		if ![isADBState device] {
 			::GUI::Print [mc {Please connect to device first.}]\n
 			return
 		}
 
-		foreach result {signed unsigned path} {
-			if [file exists $cApp($result)] {
-				set adbout [Adb install -r $cApp($result)]
-				# 성공처리만. 에러처리는 Adb에서 일괄로 하자.
-				break
-			}
+		set resultPath [getResult $apkPath]
+		if [file exists $resultPath] {
+			set adbout [Adb install -r $resultPath]
+			# 성공처리만. 에러처리는 Adb에서 일괄로 하자.
 		}
 	}
 
 	proc {Explore project} apkPath {
 		GetNativePathArray $apkPath cApp
-
 		catch {exec explorer $cApp(proj)}
+	}
+	
+	proc {Explore app dir} apkPath {
+		GetNativePathArray $apkPath cApp
+		catch {exec explorer [AdaptPath $cApp(path)]}
 	}
 
 	proc {Optimize png} apkPath {
@@ -375,13 +443,18 @@ Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
 	}
 
 	proc {ADB connect} {} {
-		set address [InputDlg [mc {Type android net address} $::hist(ip)]]
+		set address [InputDlg [mc {Type android net address}] $::hist(ip)]
 		if [string is space $address] return
-		# Adb version이 있는 이유는 Adb함수가 Adb구동 이전에 필요한 파일들을 복사해주기 때문. 이건 ADB shell명령에도 있음.
+		set ::hist(ip) $address
 		::GUI::Print [mc {ADB connecting...}]\n
+
+#		TODO: 이런식으로 stdin, stderr, stdout을 지정해야 할 듯
+#		Adb version이 있는 이유는 Adb함수가 Adb구동 이전에 필요한 파일들을 복사해주기 때문. 이건 ADB shell명령에도 있음.
+#		ADB version
 #		::twapi::create_process {} -cmdline "cmd /C echo [mc {Connecting...}] & \
 #			[::ModApk::GetVFile adb.exe] connect $address $config(actionAfterConnect)" \
 #			-title [mc "ADB Connect"] -newconsole 1 -inherithandles 1
+
 		Adb connect $address
 		eval $::config(actionAfterConnect)
 	}
