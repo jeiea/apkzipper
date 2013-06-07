@@ -10,11 +10,11 @@ package require tkdnd
 package require tooltip
 package require msgcat 1.4.4
 package require http
+package require TclOO
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
 # 전역변수 선언부.
-# TODO: 이 경로를 제대로 고치기. 지금은 디버그하고 실행파일하고 다른 경우 대처하기 위해 절대경로 땜빵.
 ::msgcat::mcload $libpath/locale
 set vfsdir [file dirname [file dirname $libpath]]
 set exedir [file dirname $vfsdir]
@@ -58,7 +58,10 @@ array set hist {
 
 
 source $libpath/Utility.tcl
-source $libpath/ApkzGUI.tcl
+source $libpath/PluginBase.tcl
+source $libpath/Controller.tcl
+source $libpath/WinADB.tcl
+source $libpath/Plugins.tcl
 if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 	source $libpath/ApkzDbg.tcl
 }
@@ -82,11 +85,9 @@ if {$::hist(recentApk) != {}} {
 
 # 임시파일 제거
 bindtags . MAINWIN
-bind MAINWIN <Destroy> {
-	foreach fileName [array names vfsMap] {
-		file delete $vfsMap($fileName)
-	}
-
+bind MAINWIN <Destroy> {+
+	cleanupVFile
+	
 	set data [dict create]
 	dict set data hist [array get ::hist]
 	catch {

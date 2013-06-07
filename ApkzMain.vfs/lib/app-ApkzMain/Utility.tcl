@@ -224,3 +224,14 @@ proc mcExtract {dirname existing} {
 	close $catalog
 }
 
+proc loadcfg {name {default ""}} {
+	if [info exists ::config($name)] {
+		return $::config($name)
+	} {
+		return $default
+	}
+}
+
+proc setcfg {name value} {
+	set ::config($name) $value
+}
