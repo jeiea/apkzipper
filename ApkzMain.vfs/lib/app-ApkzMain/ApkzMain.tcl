@@ -28,7 +28,7 @@ if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 
 LoadHistory
 
-bind .p.f2.fLog.sb <Shift-3> {
+bind .p.f2.fLog.sb <Control-Shift-3> {
 	catch {console show}
 }
 
