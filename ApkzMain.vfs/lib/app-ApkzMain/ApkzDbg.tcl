@@ -28,6 +28,7 @@ proc pval {args} {
 #}
 
 # 재귀적으로 verbose걸어버리면 편할 텐데. 근데... 무진장 어렵다. 변수값만 확인하는게 ㅡㅡ;;
+# trace에 비슷한 게 있음... 잘 알아둬야 하나
 proc verbose_eval {script} {
 	set cmd ""
 	foreach line [split $script \n] {

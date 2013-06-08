@@ -13,18 +13,17 @@ proc scan_dir {dirname pattern} {
 
 proc bgopen_handler {callback chan} {
 	append ::bgData($chan) [set data [read $chan]]
-	{*}$callback $data
+	catch {{*}$callback $data}
 	
 	if {[eof $chan]} {
 		fconfigure $chan -blocking true
 		set isErr [catch {close $chan} errmsg ::bgAlive($chan)]
-		if $isErr {
-			# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
-			# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
-			dict set ::bgAlive($chan) -errormsg $errmsg
-			dict set ::bgAlive($chan) -stdout $::bgData($chan)
-			unset ::bgData($chan)
-		}
+		# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
+		# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
+		dict set ::bgAlive($chan) -errormsg $errmsg
+		dict set ::bgAlive($chan) -stdout $::bgData($chan)
+		unset ::bgData($chan)
+		set ::bgReturn($chan) 1
 	}
 }
 
@@ -32,15 +31,18 @@ proc bgopen {callback args} {
 	set chan [open "| $args 2>@1" r]
 	fconfigure $chan -blocking false
 	fileevent $chan readable [list bgopen_handler $callback $chan]
-	vwait ::bgAlive($chan)
+	set ::bgReturn($chan) 0
+	vwait ::bgReturn($chan)
 
+	unset ::bgReturn($chan)
 	set ret $::bgAlive($chan)
 	unset ::bgAlive($chan)
+	pval ret
 	if {[dict get $ret -code] == 1} {
 		# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
 		error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
 	}
-	return 0
+	return [dict get $ret -stdout]
 }
 
 # 파이썬의 range랑 같다. 리눅스의 seq랑 같은지는 모르겠지만.
@@ -152,32 +154,43 @@ proc getChildsRecursive {win} {
 	return $ret
 }
 
-proc InputDlg {msg args} {
+proc InputDlg {msg} {
 	set id [string map {. {}} [expr rand()]]
-	global inputvalue$id {}
+	set focusing {
+		raise .pul
+		focus .pul.entry
+	}
 
-	toplevel .pul
+	if [winfo exist .pul] {
+		eval $focusing
+		return {}
+	} {
+		toplevel .pul
+	}
 	wm title .pul [mc {Input}]
 
 	pack [ttk::label .pul.label -text $msg] -side top
-	pack [ttk::combobox .pul.entry -values [lrange $args 1 end]] -side bottom -fill x
-	.pul.entry insert 0 [lindex $args 0]
+	pack [ttk::combobox .pul.entry -values [lrange $::hist($msg) 1 end]] -side bottom -fill x
+	.pul.entry insert 0 [lindex $::hist($msg) 0]
 	.pul.entry selection range 0 end
 	foreach widget {.pul .pul.label .pul.entry} {
-		bind $widget <Escape> {destroy .pul}
+		bind $widget <Escape> {
+			destroy .pul
+		}
 	}
-	bind .pul.entry <Return> [subst {
-		set ::inputvalue$id \[.pul.entry get\]
-		destroy .pul
-	}]
-	bind .pul <Destroy> "set ::inputvalue$id {}"
+	bind .pul.entry <Return> {
+		set ::dlginputval [.pul.entry get]
+	}
 	
-	raise .pul
-	focus .pul.entry
-
-	vwait ::inputvalue$id
-	set ret [subst $[subst ::inputvalue$id]]
-	unset ::inputvalue$id
+	bind .pul <Destroy> {
+		set ::dlginputval {}
+	}
+	
+	eval $focusing
+	vwait ::dlginputval
+	
+	set ret $::dlginputval
+	destroy .pul
 	return $ret
 }
 
@@ -216,7 +229,7 @@ proc mcExtract {dirname existing} {
 			}
 			if {[lsearch -exact $already $focus] == -1} {
 				lappend already $focus
-				puts $catalog "mcset $locale $quote $quote"
+				puts $catalog "mcset $locale $focus $focus"
 			}
 		}
 	}

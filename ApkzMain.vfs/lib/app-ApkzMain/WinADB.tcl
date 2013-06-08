@@ -7,7 +7,6 @@ namespace eval WinADB {
 	}
 }
 
-# HACK: 임시파일의 이름과 경로가 보장되면 좋겠는데... 깔끔한 방법이 없나?
 proc WinADB::adb args {
 	getVFile AdbWinApi.dll
 	getVFile AdbWinUsbApi.dll
@@ -37,25 +36,27 @@ proc WinADB::AskForceInstall path {
 }
 
 proc WinADB::adb_waitfor cmd {
+	adb version
 	set cmdline "cmd /C echo [mc {Waiting for device... Aborting is Ctrl+C}] & "
-	append cmdline "[::ModApk::getVFile adb.exe] wait-for-device & "
-	append cmdline "[::ModApk::getVFile adb.exe] [string tolower $cmd]"
+	append cmdline "[getVFile adb.exe] wait-for-device & "
+	append cmdline "[getVFile adb.exe] [string tolower $cmd]"
 
 	::twapi::allocate_console
 	::twapi::create_process {} -cmdline $cmdline -title [mc "ADB $cmd"] -detached 0 -inherithandles 1
-	#	::twapi::set_console_control_handler {
-	#		::twapi::free_console
-	#		return 1
-	#	}
+#	::twapi::set_console_control_handler {
+#		tk_messageBox -title asdf
+#		return 1
+#	}
+#	
 	#		::twapi::set_standard_handle stdin [set dupin [::twapi::duplicate_handle [::twapi::get_standard_handle stdin]]]
 	#		::twapi::set_standard_handle stdout [set dupout [::twapi::duplicate_handle [::twapi::get_standard_handle stdout]]]
 	#		::twapi::set_standard_handle stderr [set duperr [::twapi::duplicate_handle [::twapi::get_standard_handle stderr]]]
 
 	#		set a [::twapi::create_console_screen_buffer]
 	#		::twapi::set_console_active_screen_buffer $a
-	#		set hConOut [::twapi::get_console_handle stdout]
 	#		::twapi::set_console_screen_buffer_size $hConOut {80 25}
 
+	set hConOut [::twapi::get_console_handle stdout]
 	set bufferInfo [::twapi::get_console_screen_buffer_info $hConOut -all]
 	set idealSize [dict get $bufferInfo -windowlocation]
 	lset idealSize 2 [expr [lindex $idealSize 2] - 2]
@@ -64,38 +65,41 @@ proc WinADB::adb_waitfor cmd {
 	::twapi::free_console
 }
 
-proc {WinADB::Import from phone} args {
+plugin {Import from phone} args {
 	if {$args != ""} {
 		set path $args
 	} {
 		set path [InputDlg [mc {Type path of android file}]]
 		if [string is space $path] return
 	}
+	addHist [mc {Type path of android file}] $path
 
-	if [file isdirectory $::vfsdir/../modding] {
-		Adb pull $path [AdaptPath $::vfsdir/../modding]
+	set dstPath [file dirname [lindex $::cAppPaths 0]]
+	if [file writable $dstPath] {
+		::WinADB::adb pull $path [AdaptPath $dstPath]
 	} {
-		Adb pull $path [AdaptPath $::vfsdir/../..]
+		::WinADB::adb pull $path [AdaptPath $::vfsRoot/..]
 	}
 }
 
 # TODO: 넣을 파일경로를 윈도우즈 가상경로로 만들어서..? ㅋㅋ
 # TODO: 다른 파일도 자동으로 푸시하도록... 이건 드래그로 처리하면 좋은데 ㅠㅠ
-proc {WinADB::Export to phone} {apkPath {dstPath ""}} {
+plugin {Export to phone} {apkPath {dstPath ""}} {
 	if {$dstPath == ""} {
-		set ::pushPath [InputDlg [mc {Type android push path}]]
+		set pushPath [InputDlg [mc {Type android push path}]]
 	} {
-		set ::pushPath $dstPath
+		set pushPath $dstPath
 	}
 	set resultPath [getResult $apkPath]
-	if [string is space $::pushPath] return
-	::View::Print "$resultPath $::pushPath\n"
+	if [string is space $pushPath] return
+	::View::Print "$resultPath $pushPath\n"
 	::View::Print [mc Pushing...]
-	Adb push $resultPath $::pushPath
 	::View::Print [mc { finished.}]\n
+	lappend ::hist([mc {Type android push path}]) $pushPath
 }
 
 proc WinADB::isADBState args {
+	adb version
 	set state [exec [getVFile adb.exe] get-state]
 	foreach check $args {
 		if {$state == $check} {
@@ -109,7 +113,8 @@ proc {WinADB::ADB logcat} bLogging {
 	variable logcatPID
 
 	if $bLogging {
-		set logfile [AdaptPath [file normalize $::vfsdir/../logcat.txt]]
+		set logfile [AdaptPath [file normalize $::vfsRoot/../logcat.txt]]
+		WinADB::adb version
 		set logcatPID [exec [getVFile adb.exe] logcat >& $logfile &]
 		::View::Print "[mc {ADB logcat executed}]: $logfile\n"
 	} {
@@ -119,36 +124,34 @@ proc {WinADB::ADB logcat} bLogging {
 }
 
 proc {WinADB::ADB connect} {} {
-	set address [InputDlg [mc {Type android net address}] $::hist(ip)]
+	set address [InputDlg [mc {Type android net address}]]
 	if [string is space $address] return
-	set ::hist(ip) $address
 	::View::Print [mc {ADB connecting...}]\n
-
+	adb connect $address
+	addHist [mc {Type android net address}] $address
 	#		TODO: 이런식으로 stdin, stderr, stdout을 지정해야 할 듯
-	#		Adb version이 있는 이유는 Adb함수가 Adb구동 이전에 필요한 파일들을 복사해주기 때문. 이건 ADB shell명령에도 있음.
-	#		ADB version
 	#		::twapi::create_process {} -cmdline "cmd /C echo [mc {Connecting...}] & \
-	#			[::ModApk::getVFile adb.exe] connect $address $config(actionAfterConnect)" \
+	#			[::getVFile adb.exe] connect $address $config(actionAfterConnect)" \
 	#			-title [mc "ADB Connect"] -newconsole 1 -inherithandles 1
 
-	Adb connect $address
 	eval $::config(actionAfterConnect)
 }
 
 proc {WinADB::Uninstall} apkPath {
 	regexp -line {package:.*name='([^']*)'} [aapt dump badging $apkPath] {} pkgName
-	Adb uninstall $::config(uninstallConserveData) $pkgName
+	adb uninstall $::config(uninstallConserveData) $pkgName
 }
 
-proc {WinADB::Install} apkPath {
-	if ![isADBState device] {
+plugin {Install} apkPath {
+	if ![WinADB::isADBState device] {
 		::View::Print [mc {Please connect to device first.}]\n
 		return
 	}
 
+	tk_messageBox -title asdf
 	set resultPath [getResult $apkPath]
 	if [file exists $resultPath] {
-		set adbout [Adb install -r $resultPath]
-		# 성공처리만. 에러처리는 Adb에서 일괄로 하자.
+		set adbout [WinADB::adb install -r $resultPath]
+		# 성공처리만. 에러처리는 adb에서 일괄로 하자.
 	}
 }

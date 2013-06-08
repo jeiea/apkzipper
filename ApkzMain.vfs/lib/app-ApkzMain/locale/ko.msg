@@ -138,6 +138,8 @@ mcset ko {Please connect to device first.} {먼저 폰을 연결해주세요.}
 
 
 mcset ko "File name malformed.\nPlease retry after rename. (e.g. test.apk)" "파일 이름이 잘못되었습니다.\n파일이름을 간단하게 바꾼 후 시도해주세요."
+mcset ko {%d items are deleted.} {%d개 항목을 삭제했습니다.} 
+mcset ko (folder) (폴더)
 
 # Dummy
 

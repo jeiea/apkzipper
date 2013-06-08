@@ -42,11 +42,11 @@ proc View::widget.generate {} {
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
 		pack [ttk::button $path -text "$count. [mc $proc]" \
-			-command "::Session::TraverseCApp {::ModApk::$proc}"] -padx 3 -expand true -fill both
+			-command "::Session::TraverseCApp {::$proc}"] -padx 3 -expand true -fill both
 
 		# 두번째 바인딩
 		if {$proc2 != ""} {
-			bind $path $::config(mod2) "::Session::TraverseCApp {::ModApk::$proc2}"
+			bind $path $::config(mod2) "::Session::TraverseCApp {::$proc2}"
 			# TODO: 이 Right click을 mod2로 바꿔야겠지?
 			tooltip $path [mc {Right click: %s} [mc $proc2]]
 		}
@@ -115,7 +115,7 @@ proc View::widget.generate {} {
 		set cmd [.p.f2.ePrompt get]
 		if {$cmd != ""} {
 			.p.f2.ePrompt delete 0 end
-			::View::CommandParser $cmd
+			::Session::CommandParser $cmd
 		}
 	}
 	focus .p.f2.ePrompt
@@ -133,7 +133,7 @@ proc View::widget.generate {} {
 		set forceBreak false
 		set reply {}
 
-		{::ModApk::Select app} $dropPaths
+		{::Session::Select app} $dropPaths
 
 		return %A
 	}
@@ -168,17 +168,16 @@ proc View::menu.generate {} {
 	}
 
 	$mSdk add command -label [mc {ADB Shell}] -command {
-			::ModApk::Adb version
 			# Eclipse 환경에서 개발할 때는 Eclipse 콘솔로 출력이 나갈 수 있으니 유의하자
-			::ModApk::Adb_waitfor Shell
+			::WinADB::adb_waitfor Shell
 		}
 	$mSdk add checkbutton -label [mc {Take phone log}] -variable bLogcat \
-		-onvalue 1 -offvalue 0 -command {{::ModApk::ADB logcat} $bLogcat}
+		-onvalue 1 -offvalue 0 -command {{::WinADB::ADB logcat} $bLogcat}
 	foreach {label cmd} [list \
-		{ADB Connect}		{{::ModApk::ADB connect}}					\
-		{Reboot}			{::ModApk::Adb_waitfor reboot}				\
-		{Enter recovery}	{::ModApk::Adb_waitfor {reboot recovery}}	\
-		{Enter download}	{::ModApk::Adb_waitfor reboot-bootloader}	\
+		{ADB Connect}		{{::WinADB::ADB connect}}					\
+		{Reboot}			{::WinADB::adb_waitfor reboot}				\
+		{Enter recovery}	{::WinADB::adb_waitfor {reboot recovery}}	\
+		{Enter download}	{::WinADB::adb_waitfor reboot-bootloader}	\
 	] {
 		$mSdk add command -label [mc $label] -command $cmd
 	}
@@ -187,7 +186,7 @@ proc View::menu.generate {} {
 	# .mbar.sdk add command -label [mc FLASH_RECOVERY] -command {}
 
 	foreach {label cmd} [list \
-		{Check update}	{{::ModApk::Check update}} \
+		{Check update}	{{::Check update}} \
 		{Visit website}	{exec cmd /C start "" http://ddwroom.tistory.com/ &} \
 		Help {tk_messageBox -title [mc Sorry] -detail [mc {Not yet ready}]}] \
 	{
@@ -198,7 +197,6 @@ proc View::menu.generate {} {
 	foreach item {
 		{Delete current result} {Delete current workdir} {Delete current except original} {Delete current all} \
 		{Delete all result} {Delete all workdir} {Delete all except original} {Delete all}} {
-		$mEtc.clean add command -label [mc $item] -command "{::ModApk::Clean folder} [list $item]"
+		$mEtc.clean add command -label [mc $item] -command "{::Clean folder} [list $item]"
 	}
 }
-

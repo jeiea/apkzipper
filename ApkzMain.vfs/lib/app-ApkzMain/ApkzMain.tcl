@@ -1,4 +1,4 @@
-package provide app-ApkzMain 1.0
+package provide app-ApkzMain 2.1
 
 set libpath [file dirname [info script]]
 lappend auto_path [file dirname $libpath]
@@ -8,91 +8,33 @@ package require Tk
 package require twapi
 package require tkdnd
 package require tooltip
-package require msgcat 1.4.4
+package require msgcat
 package require http
 package require TclOO
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
-# 전역변수 선언부.
-::msgcat::mcload $libpath/locale
-set vfsdir [file dirname [file dirname $libpath]]
-set exedir [file dirname $vfsdir]
-set env(PATH) "[file dirname $vfsdir];$env(PATH)"
-set apkzver 2.0
-set apkzDistver beta
-array set config {
-	zlevel	9
-	decomTargetOpt	"     "
-	verbose	true
-	btns {
-		0	{Import from phone}	{}
-		0	{Select app}		{Select app recent}
-		1	{Extract}			{}
-		1	{Decompile}			{Install framework}
-		2	{Explore project}	{Explore app dir}
-		2	{Optimize png}		{}
-		2	{Recompress ogg}	{}
-		3	{Zip}				{Zipalign}
-		3	{Compile}			{System compile}
-		3	{Sign}				{}
-		4	{Install}			{}
-		4	{Export to phone}	{}
-	}
-	mod1	<ButtonRelease-1>
-	mod2	<ButtonRelease-3>
-	actionAfterConnect {}
-	enableHistory true
-	installConserveData -r
-	uninstallConserveData -k
-	askExtension {}
-	maxRecentSession 10
-	maxInputHistory 5
-}
 
-array set hist {
-	recentApk {}
-	ip {}
-	lastBrowsePath .
-}
-
-
-source $libpath/Utility.tcl
 source $libpath/PluginBase.tcl
-source $libpath/Controller.tcl
-source $libpath/WinADB.tcl
 source $libpath/Plugins.tcl
+source $libpath/Utility.tcl
+source $libpath/Config.tcl
+source $libpath/View.tcl
+source $libpath/WinADB.tcl
+source $libpath/Session.tcl
 if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 	source $libpath/ApkzDbg.tcl
 }
+
+LoadHistory
+
 bind .p.f2.fLog.sb <Shift-3> {
 	catch {console show}
 }
 
-catch {
-	set data [dict create]
-	fconfigure [set configfile [open $env(appdata)/apkz.cfg r]] -encoding utf-8
-	set data [read $configfile]
-	close $configfile
-	if [dict exists $data hist] {
-		array set ::hist [dict get $data hist]
-	}
-}
-
-if {$::hist(recentApk) != {}} {
-	{::ModApk::Select app} [lindex $::hist(recentApk) 0]
-}
-
 # 임시파일 제거
 bindtags . MAINWIN
-bind MAINWIN <Destroy> {+
+bind MAINWIN <Destroy> {
 	cleanupVFile
-	
-	set data [dict create]
-	dict set data hist [array get ::hist]
-	catch {
-		fconfigure [set configfile [open $env(appdata)/apkz.cfg w]] -encoding utf-8
-		puts $configfile $data
-		close $configfile
-	}
+	saveHistory
 }
