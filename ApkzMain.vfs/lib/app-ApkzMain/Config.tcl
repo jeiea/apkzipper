@@ -4,8 +4,6 @@
 set vfsRoot [file dirname [file dirname $libpath]]
 set exedir [file dirname $vfsRoot]
 set env(PATH) "[file dirname $vfsRoot];$env(PATH)"
-set apkzver 2.1
-set apkzDistver beta
 array set config {
 	zlevel	9
 	decomTargetOpt	"     "

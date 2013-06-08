@@ -134,12 +134,14 @@ mcset ko "Java not found.\nTo solve this problem, install JRE or JDK." "자바�
 
 mcset ko {%1$s and %2$d others} {%1$s 외 %2$d개}
 mcset ko {Downloading...} {다운로드 중...}
+mcset ko {Installing} {설치하는 중}
 mcset ko {Please connect to device first.} {먼저 폰을 연결해주세요.}
 
 
 mcset ko "File name malformed.\nPlease retry after rename. (e.g. test.apk)" "파일 이름이 잘못되었습니다.\n파일이름을 간단하게 바꾼 후 시도해주세요."
 mcset ko {%d items are deleted.} {%d개 항목을 삭제했습니다.} 
 mcset ko (folder) (폴더)
+mcset ko {The certificate doesn't match the device's.} {이미 폰에 설치되어 있는 앱과 사인이 다릅니다.}
 
 # Dummy
 

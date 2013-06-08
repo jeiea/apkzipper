@@ -1,5 +1,9 @@
 
 set apkzver 2.1
-package ifneeded app-ApkzMain $apkzver " \
-	source [file join $dir ApkzMain.tcl]; \
-	package provide app-ApkzMain $apkzver "
+
+package ifneeded app-ApkzMain $apkzver [format {
+	package provide app-ApkzMain %1$s
+	set apkzver %1$s
+	set apkzDistver beta
+	source {%2$s}
+} $apkzver [file join $dir ApkzMain.tcl]]

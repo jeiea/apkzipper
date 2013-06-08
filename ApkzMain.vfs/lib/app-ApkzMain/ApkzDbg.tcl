@@ -1,4 +1,5 @@
 # 전부 디버그때만 동작해야 할 부분. 릴리즈땐 없애야 한다.
+# 함수명 검색 잊지 말자.
 console show
 mcExtract . $::libpath/locale/ko.msg
 
@@ -7,7 +8,7 @@ proc pval {args} {
 		upvar $varname value
 		puts "$varname: $value"
 	}
-	puts {} 
+	puts {}
 }
 
 # errorinfo는 번잡하다. 좀 가공해야지. proc 래핑이라 하는건가?

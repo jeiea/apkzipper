@@ -37,7 +37,6 @@ proc bgopen {callback args} {
 	unset ::bgReturn($chan)
 	set ret $::bgAlive($chan)
 	unset ::bgAlive($chan)
-	pval ret
 	if {[dict get $ret -code] == 1} {
 		# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
 		error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
@@ -229,7 +228,7 @@ proc mcExtract {dirname existing} {
 			}
 			if {[lsearch -exact $already $focus] == -1} {
 				lappend already $focus
-				puts $catalog "mcset $locale $focus $focus"
+				puts $catalog "mcset $locale {$focus} {$focus}"
 			}
 		}
 	}

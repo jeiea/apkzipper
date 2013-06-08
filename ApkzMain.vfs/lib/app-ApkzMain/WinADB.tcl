@@ -1,10 +1,10 @@
 namespace eval WinADB {
 	variable adbErrMap
 
-	array set adbErrMap {
-		INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES
-		{}
-	}
+	array set adbErrMap [list \
+		{Failure \[INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES\]} \
+		"[mc ERROR]: [mc {The certificate doesn't match the device's.}]" \
+	]
 }
 
 proc WinADB::adb args {
@@ -12,10 +12,12 @@ proc WinADB::adb args {
 	getVFile AdbWinUsbApi.dll
 	set adbout [bgopen ::View::Print [getVFile adb.exe] {*}$args]
 
+	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
+	# 저 adbErrMap을 쓰면 될 듯
 	variable adbErrMap
 	foreach errmsg [array names adbErrMap] {
 		if [regexp -nocase $errmsg $adbout] {
-			eval [namespace code $adbErrMap($errmsg)] [lindex $args 1]
+			::View::Print $adbErrMap($errmsg)\n
 		}
 	}
 	return $adbout
@@ -44,7 +46,6 @@ proc WinADB::adb_waitfor cmd {
 	::twapi::allocate_console
 	::twapi::create_process {} -cmdline $cmdline -title [mc "ADB $cmd"] -detached 0 -inherithandles 1
 #	::twapi::set_console_control_handler {
-#		tk_messageBox -title asdf
 #		return 1
 #	}
 #	
@@ -82,8 +83,8 @@ plugin {Import from phone} args {
 	}
 }
 
-# TODO: 占쏙옙占쏙옙 占쏙옙占싹곤옙罐占�占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싸뤄옙 占쏙옙占쏙옙底�.? 占쏙옙占쏙옙
-# TODO: 占쌕몌옙 占쏙옙占싹듸옙 占쌘듸옙占쏙옙占쏙옙 푸占쏙옙占싹듸옙占쏙옙... 占싱곤옙 占썲래占쌓뤄옙 처占쏙옙占싹몌옙 占쏙옙占쏙옙占쏙옙 占싻ㅿ옙
+# TODO: 넣을 파일경로를 윈도우즈 가상경로로 만들어서..? ㅋㅋ
+# TODO: 다른 파일도 자동으로 푸시하도록... 이건 드래그로 처리하면 좋은데 ㅠㅠ
 plugin {Export to phone} {apkPath {dstPath ""}} {
 	if {$dstPath == ""} {
 		set pushPath [InputDlg [mc {Type android push path}]]
@@ -129,7 +130,7 @@ proc {WinADB::ADB connect} {} {
 	::View::Print [mc {ADB connecting...}]\n
 	adb connect $address
 	addHist [mc {Type android net address}] $address
-	#		TODO: 占싱뤄옙占쏙옙占쏙옙占쏙옙 stdin, stderr, stdout占쏙옙 占쏙옙占쏙옙占쌔억옙 占쏙옙 占쏙옙
+	#		TODO: 이런식으로 stdin, stderr, stdout을 지정해야 할 듯
 	#		::twapi::create_process {} -cmdline "cmd /C echo [mc {Connecting...}] & \
 	#			[::getVFile adb.exe] connect $address $config(actionAfterConnect)" \
 	#			-title [mc "ADB Connect"] -newconsole 1 -inherithandles 1
@@ -148,10 +149,10 @@ plugin {Install} apkPath {
 		return
 	}
 
-	tk_messageBox -title asdf
 	set resultPath [getResult $apkPath]
 	if [file exists $resultPath] {
+		::View::Print "[mc Installing]: $resultPath"
 		set adbout [WinADB::adb install -r $resultPath]
-		# 占쏙옙占쏙옙처占쏙옙占쏙옙. 占쏙옙占쏙옙처占쏙옙占쏙옙 adb占쏙옙占쏙옙 占싹곤옙占�占쏙옙占쏙옙.
+		# 성공처리만. 에러처리는 adb에서 일괄로 하자.
 	}
 }

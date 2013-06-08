@@ -13,7 +13,8 @@ proc Java args {
 	}
 
 	# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
-	return [bgopen ::View::Print $javapath {*}$args]
+	bgopen ::View::Print $javapath {*}$args
+	return 0
 }
 
 # vfs의 바이너리를 복사해서 경로를 리턴.
