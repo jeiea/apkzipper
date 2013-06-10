@@ -1,36 +1,129 @@
-package require registry
-set a [registry keys {HKEY_LOCAL_MACHINE\softw}]
-puts $a
+namespace eval rchan {
 
+		variable chan        ;# set of known channels
+		array set chan {}
 
-lassign [chan pipe] p1r p1w
-lassign [chan pipe] p2r p2w
+		proc initialize {chanid args} {
+			variable chan
+			set chan($chanid) ""
 
-proc got_stdout {chan args} {
-	set line [read $chan 128]
-	puts -nonewline $line
-}
+			puts [info level 0]
 
-proc got_stderr {chan args} {
-	#gets $chan line
-	set line [read $chan 10]
-	puts -nonewline $line
-}
+			set map [dict create]
+			dict set map finalize    [list ::rchan::finalize $chanid]
+			dict set map watch       [list ::rchan::watch $chanid]
+			dict set map seek        [list ::rchan::seek $chanid]
+			dict set map write       [list ::rchan::write $chanid]
 
-fileevent $p1r readable "got_stdout $p1r"
-#fileevent $p2r readable "got_stderr $p2r"
+			if { 1 } {
+				dict set map read        [list ::rchan::read $chanid]
+				dict set map cget        [list ::rchan::cget $chanid]
+				dict set map cgetall     [list ::rchan::cgetall $chanid]
+				dict set map configure   [list ::rchan::configure $chanid]
+				dict set map blocking    [list ::rchan::blocking $chanid]
+			}
 
-set args "music.mp3"
+			namespace ensemble create -map $map -command ::$chanid
 
-set pids [exec mplayer $args >@ $p1w 2>@ $p2w &]
-puts $pids
+			return "initialize finalize watch read write configure cget cgetall blocking"
+		}
 
-proc kill {args} {
-	foreach ch $args {
-		catch {puts $ch "q"}
-		catch {set junk [read $ch]}
-		catch {close $ch}
+		proc finalize {chanid} {
+			variable chan
+			unset chan($chanid)
+			puts [info level 0]
+		}
+
+		variable watching
+		array set watching {read 0 write 0}
+
+		proc watch {chanid events} {
+			variable watching
+			puts [info level 0]
+			# Channel no longer interested in events that are not in $events
+			foreach event {read write} {
+				set watching($event) 0
+			}
+			foreach event $events {
+				set watching($event) 1
+			}
+		}
+
+		proc read {chanid count} {
+			variable chan
+			puts [info level 0]
+			if {[string length $chan($chanid)] < $count} {
+				set result $chan($chanid); set chan($chanid) ""
+			} else {
+				set result [string range $chan($chanid) 0 $count-1]
+				set chan($chanid) [string range $chan($chanid) $count end]
+			}
+
+			# implement max buffering
+			variable watching
+			variable max
+			if {$watching(write) && ([string length $chan($chanid)] < $max)} {
+				chan postevent $chanid write
+			}
+
+			return $result
+		}
+
+		variable max 1048576        ;# maximum size of the reflected channel
+
+		proc write {chanid data} {
+			variable chan
+			variable max
+			variable watching
+
+			puts [info level 0]
+
+			set left [expr {$max - [string length $chan($chanid)]}]        ;# bytes left in buffer
+			set dsize [string length $data]
+			if {$left >= $dsize} {
+				append chan($chanid) $data
+				if {$watching(write) && ([string length $chan($chanid)] < $max)} {
+					# inform the app that it may still write
+					chan postevent $chanid write
+				}
+			} else {
+				set dsize $left
+				append chan($chanid) [string range $data $left]
+			}
+
+			# inform the app that there's something to read
+			if {$watching(read) && ($chan($chanid) ne "")} {
+				puts "post event read"
+				chan postevent $chanid read
+			}
+
+			return $dsize        ;# number of bytes actually written
+		}
+
+		proc blocking { chanid args } {
+			variable chan
+
+			puts [info level 0]
+		}
+
+		proc cget { chanid args } {
+			variable chan
+
+			puts [info level 0]
+		}
+
+		proc cgetall { chanid args } {
+			variable chan
+
+			puts [info level 0]
+		}
+
+		proc configure { chanid args } {
+			variable chan
+
+			puts [info level 0]
+		}
+
+		namespace export -clear *
+		namespace ensemble create -subcommands {}
 	}
-}
-
-vwait forever

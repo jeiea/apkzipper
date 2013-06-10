@@ -187,7 +187,7 @@ proc View::menu.generate {} {
 
 	foreach {label cmd} [list \
 		{Check update}	{{::Check update}} \
-		{Visit website}	{exec cmd /C start "" http://ddwroom.tistory.com/ &} \
+		{Visit website}	{exec [auto_execok start] "" http://ddwroom.tistory.com/ &} \
 		Help {tk_messageBox -title [mc Sorry] -detail [mc {Not yet ready}]}] \
 	{
 		$mEtc add command -label [mc $label] -command $cmd
@@ -200,3 +200,32 @@ proc View::menu.generate {} {
 		$mEtc.clean add command -label [mc $item] -command "{::Clean folder} [list $item]"
 	}
 }
+
+oo::class create CapturingTransform {
+	variable var
+	constructor {varName} {
+		# Make an alias from the instance variable to the global variable
+		my eval [list upvar \#0 $varName var]
+	}
+	method initialize {handle mode} {
+		if {$mode ne "write"} {error "can't handle reading"}
+		return {finalize initialize write}
+	}
+	method finalize {handle} {
+		# Do nothing, but mandatory that it exists
+	}
+
+	method write {handle bytes} {
+		append var $bytes
+		set wLogText _.p.f2.fLog.tCmd
+		$wLogText insert end $data
+		$wLogText yview end
+		# Return the empty string, as we are swallowing the bytes
+		return ""
+	}
+}
+
+#set myBuffer ""
+#chan push stdout [CapturingTransform new myBuffer]
+
+#chan pop stdout

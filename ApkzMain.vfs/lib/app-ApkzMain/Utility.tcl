@@ -11,37 +11,106 @@ proc scan_dir {dirname pattern} {
 	concat $out [glob -type f -nocomplain -dir $dirname {*}$pattern]
 }
 
+
+proc bgopen_handle {callback chan} {
+	append ::bgData($chan) [set data [chan read $chan]]
+	puts "read: $::bgData($chan), chaneof: [chan eof $chan]"
+	catch {{*}$callback $data}
+	
+	if {[eof $chan]} {
+		puts awefjio
+		chan configure $chan -blocking true
+		set returnInfo ""
+		set isErr [catch {chan close $chan} errmsg returnInfo]
+		# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
+		# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
+		dict set returnInfo -errormsg $errmsg
+		dict set returnInfo -stdout $::bgData($chan)
+		unset ::bgData($chan)
+		set ::bgAlive($chan) $returnInfo
+	} {
+		after 100 [list bgopen_handle $callback $chan]
+	}
+}
+
 proc bgopen_handler {callback chan} {
 	append ::bgData($chan) [set data [read $chan]]
 	catch {{*}$callback $data}
 	
 	if {[eof $chan]} {
 		fconfigure $chan -blocking true
-		set isErr [catch {close $chan} errmsg ::bgAlive($chan)]
+		set returnInfo ""
+		set isErr [catch {close $chan} errmsg returnInfo]
 		# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
 		# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
-		dict set ::bgAlive($chan) -errormsg $errmsg
-		dict set ::bgAlive($chan) -stdout $::bgData($chan)
+		dict set returnInfo -errormsg $errmsg
+		dict set returnInfo -stdout $::bgData($chan)
 		unset ::bgData($chan)
-		set ::bgReturn($chan) 1
+		set ::bgAlive($chan) $returnInfo
 	}
 }
 
-proc bgopen {callback args} {
-	set chan [open "| $args 2>@1" r]
-	fconfigure $chan -blocking false
-	fileevent $chan readable [list bgopen_handler $callback $chan]
-	set ::bgReturn($chan) 0
-	vwait ::bgReturn($chan)
+#if {$tcl_platform(platform) == windows} {
+#	proc bgopen {callback args} {
+#		
+#	}
+#} else {
 
-	unset ::bgReturn($chan)
-	set ret $::bgAlive($chan)
-	unset ::bgAlive($chan)
+# 이거 5시간 걸린 twapi안 쓰고 처리할 수 있는 코드다.
+# chan pipe는 프로세스가 ㄷ
+proc bgopen {callback args} {
+	lassign [chan pipe] outr outw
+	lassign [chan pipe] errr errw
+	chan configure $outw -blocking false -buffering none
+	chan configure $errw -blocking false -buffering none
+	chan configure $outr -blocking false -buffering none
+	chan configure $errr -blocking false -buffering none
+	eval exec $args >@ $outw 2>@ $errw &
+	set ::bgAlive($outr) {}
+	set ::bgAlive($errr) {}
+	puts "$outw $errw"
+	
+	set handleOut [list bgopen_handle $callback $outr]
+	set handleErr [list bgopen_handle $callback $errr]
+	fileevent $outr readable $handleOut
+	fileevent $errr readable $handleErr
+	
+	vwait ::bgAlive($outr)
+
+	set ret $::bgAlive($outr)
+	puts "outr: $::bgAlive($outr)"
+	puts "errr: $::bgAlive($outr)"
+	unset ::bgAlive($outr)
+	unset ::bgAlive($errr)
 	if {[dict get $ret -code] == 1} {
 		# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
 		error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
 	}
 	return [dict get $ret -stdout]
+}
+
+	proc _bgopen {callback args} {
+		set chan [open "| $args 2>@1" r]
+		fconfigure $chan -blocking false
+		fileevent $chan readable [list bgopen_handler $callback $chan]
+		set ::bgAlive($chan) {}
+		vwait ::bgAlive($chan)
+
+		set ret $::bgAlive($chan)
+		unset ::bgAlive($chan)
+		if {[dict get $ret -code] == 1} {
+			# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
+			error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
+		}
+		return [dict get $ret -stdout]
+	}
+#}
+
+bind MAINWIN <Destroy> {+
+	foreach bgproc {[array names ::bgAlive]} {
+		close $bgproc
+		tk_messageBox -title "close $bgproc"
+	}
 }
 
 # 파이썬의 range랑 같다. 리눅스의 seq랑 같은지는 모르겠지만.

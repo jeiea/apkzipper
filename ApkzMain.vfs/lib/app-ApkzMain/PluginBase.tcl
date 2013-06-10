@@ -27,7 +27,7 @@ proc getVFile fileName {
 		file mkdir $virtualTmpDir
 	}
 
-	if ![info exist $virtualTmpDir/$fileName] {
+	if ![file exist $virtualTmpDir/$fileName] {
 		file copy -force $::vfsRoot/binaries/$fileName $virtualTmpDir/$fileName
 	}
 

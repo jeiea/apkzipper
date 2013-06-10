@@ -10,6 +10,9 @@ namespace eval WinADB {
 proc WinADB::adb args {
 	getVFile AdbWinApi.dll
 	getVFile AdbWinUsbApi.dll
+#	lassign [twapi::create_process [getVFile adb.exe] -cmdline {adb.exe start-server} -showwindow hidden] startup
+#	while {[twapi::process_exists $startup]} {after 100}
+#	exec [getVFile adb.exe] start-server &
 	set adbout [bgopen ::View::Print [getVFile adb.exe] {*}$args]
 
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
@@ -100,8 +103,7 @@ plugin {Export to phone} {apkPath {dstPath ""}} {
 }
 
 proc WinADB::isADBState args {
-	adb version
-	set state [exec [getVFile adb.exe] get-state]
+	regexp -line {^(unknown|offline|bootloader|device)$} [WinADB::adb get-state] state
 	foreach check $args {
 		if {$state == $check} {
 			return true

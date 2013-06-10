@@ -11,6 +11,16 @@ proc pval {args} {
 	puts {}
 }
 
+proc adb args {
+	WinADB::adb {*}$args
+}
+
+proc leavePrefix {cmdstr code result op} {
+	puts [format "cmdstr: %s\ncode: %s\nresult: %s\n" \
+			$cmdstr $code $result]
+}
+#trace add execution bgopen leavestep leavePrefix
+
 # errorinfo는 번잡하다. 좀 가공해야지. proc 래핑이라 하는건가?
 # Tk에서 text위젯에 더블클릭 버그를 일으켰다. 뭐가 문젠 것 같은데.
 #rename proc _My_proc

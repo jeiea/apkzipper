@@ -14,6 +14,7 @@ package require TclOO
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
+bindtags . MAINWIN
 
 source $libpath/PluginBase.tcl
 source $libpath/Plugins.tcl
@@ -33,8 +34,7 @@ bind .p.f2.fLog.sb <Control-Shift-3> {
 }
 
 # 임시파일 제거
-bindtags . MAINWIN
-bind MAINWIN <Destroy> {
+bind MAINWIN <Destroy> {+
 	cleanupVFile
 	saveHistory
 }
