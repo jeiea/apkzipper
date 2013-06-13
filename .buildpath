@@ -4,7 +4,7 @@
 	<buildpathentry kind="con" path="org.eclipse.dltk.launching.INTERPRETER_CONTAINER">
 		<attributes>
 			<attribute name="user_dependencies" value=""/>
-			<attribute name="auto_dependencies" value="twapi_base|twapi_msi|twapi_pdh|twapi_printer|twapi_wmi|twapi_etw|twapi_os|twapi_service|twapi_nls|twapi_synch|twapi_mstask|twapi_network|twapi_resource|twapi_security|msgcat|twapi_process|twapi_shell|twapi_storage|twapi_crypto|twapi_eventlog|metoo|Tcl|twapi_rds|twapi_input|twapi_share|twapi_namedpipe|twapi_apputil|Tk|TclOO|twapi_ui|twapi_power|twapi_device|twapi_multimedia|twapi_clipboard|http|twapi_winsta|starkit|twapi_console|twapi_account|twapi_com"/>
+			<attribute name="auto_dependencies" value="twapi_base|twapi_msi|twapi_pdh|twapi_printer|twapi_wmi|twapi_etw|twapi_os|twapi_service|twapi_nls|twapi_synch|twapi_mstask|twapi_network|twapi_resource|twapi_security|msgcat|twapi_process|twapi_shell|twapi_storage|twapi_crypto|twapi_eventlog|metoo|Tcl|Thread|twapi_rds|twapi_input|twapi_share|twapi_namedpipe|twapi_apputil|Tk|TclOO|twapi_ui|twapi_power|twapi_device|twapi_multimedia|twapi_clipboard|http|twapi_winsta|starkit|twapi_console|twapi_account|twapi_com"/>
 		</attributes>
 	</buildpathentry>
 </buildpath>

@@ -68,7 +68,7 @@ proc View::widget.generate {} {
 			break
 		}
 	}
-	namespace inscope :: "rename $under.tCmd _$under.tCmd"
+	namespace inscope :: [list rename $under.tCmd _$under.tCmd]
 
 	proc ::$under.tCmd args {
 		switch -exact -- [lindex $args 0] {

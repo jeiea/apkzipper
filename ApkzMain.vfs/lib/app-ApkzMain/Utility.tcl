@@ -30,35 +30,86 @@ proc bgopen_handler {callback chan} {
 }
 
 if {$tcl_platform(platform) == {windows}} {
-	proc bgopen {callback args} {
+	
+	
+	proc bgopen_receive {callback chan} {
+		append ::bgData($chan) [set data [chan read $chan]]
+		catch {{*}$callback $data}
+	}
+	
+	proc bgopen_cleanup {callback chan} {
+		bgopen_receive $callback $chan
+		chan configure $chan -blocking true
+		chan close $chan
+		set output $::bgData($chan)
+		unset ::bgData($chan)
+		return $output
+	}
+	
+	proc whenClose {hProc outw errw inw inr callback} {
+		set exitcode [twapi::get_process_exit_code $hProc]
+		twapi::close_handle $hProc
+		
+		foreach chan [list $outw $errw $inw $inr] {
+			chan close $chan
+		}
+		set stdoutData [bgopen_cleanup $callback $outr]
+		set stderrData [bgopen_cleanup $callback $errr]
+		
+		set ret [concat $stdoutData $stderrData]
+		if {$exitcode != 0} {
+			error $stdoutData $stderrData $exitcode
+		}
+		return $ret
+	}
+	
+	proc _bgopen {callback args} {
 		lassign [chan pipe] inr inw
 		lassign [chan pipe] outr outw
 		lassign [chan pipe] errr errw
-		set inrHandle [twapi::get_tcl_channel_handle $inr read]
-		set outwHandle [twapi::get_tcl_channel_handle $outw write]
-		set errwHandle [twapi::get_tcl_channel_handle $errw write]
-		lassign [twapi::create_process {} -cmdline $args -showwindow hidden\
-			-inherithandles true -detached 1 -stdhandles [list $inrHandle $outwHandle $errwHandle]] processId
-		chan configure $inr -blocking false -buffering line
-		chan configure $outr -blocking false -buffering line
-		chan configure $errr -blocking false -buffering line
-#		
-#		while {[twapi::process_exists $startup]} {after 100}
-		set ::bgAlive($outr) {}
-		fileevent $outr readable [list bgopen_handler $callback $outr]
-		fileevent $errr readable [list bgopen_handler $callback $outr]
-		vwait ::bgAlive($outr)
+		chan configure $outr -blocking false -buffering none
+		chan configure $errr -blocking false -buffering none
+		set pid [eval exec $args >@ $outw 2>@ $errw &]
+		puts "start: $args"
+		
+		set handleOut [list bgopen_receive $callback $outr]
+		set handleErr [list bgopen_receive $callback $errr]
+		chan event $outr readable $handleOut
+		chan event $errr readable $handleErr
+		
+		set hProc [twapi::get_process_handle $pid -access generic_execute]
+		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgWait$pid 0]\;#
+		vwait ::bgWait$pid
+		unset ::bgWait$pid
 
-		set ret $::bgAlive($outr)
-		puts "ret: $ret"
-		unset ::bgAlive($outr)
-		if {[dict get $ret -code] == 1} {
-			# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
-			error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
+#		while {[twapi::process_exists $pid]} {
+#			after 20
+#			update
+#		}
+
+#		set ::mutex($pid) [thread::mutex create -recursive]
+#		thread::mutex lock $::mutex($pid)
+#		twapi::wait_on_handle $hProc -async [list puts di]\;[list thread::mutex unlock ::mutex($pid)]\;#
+#		thread::mutex lock $::mutex($pid)
+#		thread::mutex unlock $::mutex($pid)
+#		thread::mutex destroy $::mutex($pid)
+#		unset ::mutex($pid)
+		set exitcode [twapi::get_process_exit_code $hProc]
+		twapi::close_handle $hProc
+		
+		foreach chan [list $outw $errw $inw $inr] {
+			chan close $chan
 		}
-		return [dict get $ret -stdout]
+		set stdoutData [bgopen_cleanup $callback $outr]
+		set stderrData [bgopen_cleanup $callback $errr]
+		
+		set ret [concat $stdoutData $stderrData]
+		if {$exitcode != 0} {
+			error $stdoutData $stderrData $exitcode
+		}
+		return $ret
 	}
-} else {
+	
 
 proc bgopen {callback args} {
 	set chan [open "| $args 2>@1" r]

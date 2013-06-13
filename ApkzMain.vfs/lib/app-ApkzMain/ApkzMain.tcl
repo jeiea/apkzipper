@@ -11,6 +11,7 @@ package require tooltip
 package require msgcat
 package require http
 package require TclOO
+package require Thread
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
