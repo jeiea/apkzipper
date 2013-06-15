@@ -63,7 +63,7 @@ proc View::widget.generate {} {
 	pack [ttk::scrollbar $under.sb -orient vertical -command "$under.tCmd yview "] -side right -fill both
 
 	foreach ideal {"³ª´®°íµñÄÚµù" "¸¼Àº °íµñ" "Consolas" "µ¸¿òÃ¼"} {
-		if {[lsearch [font families] $ideal] != -1} {
+		if {[lsearch -exact [font families] $ideal] != -1} {
 			$under.tCmd config -font [list $ideal 9]
 			break
 		}
@@ -186,8 +186,8 @@ proc View::menu.generate {} {
 	# .mbar.sdk add command -label [mc FLASH_RECOVERY] -command {}
 
 	foreach {label cmd} [list \
-		{Check update}	{{::Check update}} \
-		{Visit website}	{exec [auto_execok start] "" http://ddwroom.tistory.com/ &} \
+		{Check update}	{{::Check update} business} \
+		{Visit website}	{eval exec [auto_execok start] "" http://ddwroom.tistory.com/ &} \
 		Help {tk_messageBox -title [mc Sorry] -detail [mc {Not yet ready}]}] \
 	{
 		$mEtc add command -label [mc $label] -command $cmd

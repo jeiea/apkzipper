@@ -72,6 +72,8 @@ mcset ko {Install framework} {프레임워크 설치}
 mcset ko {Explore project} {작업폴더 열기}
 mcset ko {Explore app dir} {앱이있는 폴더 열기}
 mcset ko {Optimize png} {PNG 최적화}
+mcset ko {Deodex} {디오덱스}
+mcset ko {Odex} {오덱스}
 mcset ko {Recompress ogg} {OGG 재압축}
 mcset ko {Zip} {압축}
 mcset ko {Compile} {컴파일}
@@ -115,8 +117,7 @@ mcset ko {Adjusting compressing level...} {압축세기에 맞게 재압축 하�
 mcset ko {Select framework file or folder} {프레임워크가 있는 폴더를 선택해주세요}
 mcset ko {Signing failed} {사인에 실패했습니다}
 mcset ko Signed {사인되었습니다}
-mcset ko {Zipalign failed} {압축정렬에 실패했습니다}
-mcset ko {Zipaligned} {압축정렬 되었습니다.}
+mcset ko {Zipaligned} {압축정렬 되었습니다}
 mcset ko {Type android push path} {파일을 넣을 안드로이드 경로를 입력해주세요}
 mcset ko {Pushing...} {전송 중...}
 mcset ko { finished.} { 완료.}
@@ -138,10 +139,17 @@ mcset ko {Installing} {설치하는 중}
 mcset ko {Please connect to device first.} {먼저 폰을 연결해주세요.}
 
 
-mcset ko "File name malformed.\nPlease retry after rename. (e.g. test.apk)" "파일 이름이 잘못되었습니다.\n파일이름을 간단하게 바꾼 후 시도해주세요."
 mcset ko {%d items are deleted.} {%d개 항목을 삭제했습니다.} 
 mcset ko (folder) (폴더)
+mcset ko {Notice} {알림}
 mcset ko {The certificate doesn't match the device's.} {이미 폰에 설치되어 있는 앱과 사인이 다릅니다.}
+mcset ko {Config file of not compatible version was found.} {호환되지 않는 버전의 설정파일을 찾았습니다.}
+mcset ko {Due to major version difference, it'll use default setting.} {버전 차이가 너무 커서 기본값을 쓰게 됩니다.}
+mcset ko {Keep in mind that settings will be overwritten when termination.} {프로그램 종료 시 설정파일이 덮어씌워지니 유의해주세요.}
+mcset ko {If problem occurs, you can use reset function.} {문제가 발생하면 설정파일 초기화기능을 사용해주세요.}
+mcset ko {File name malformed.} {파일 이름이 잘못되었습니다.}
+mcset ko {Please retry after rename. (e.g. test.apk)} {파일 이름을 간단하게 바꾼 후 시도해주세요. (예:test.apk)}
+mcset ko {Config file of different version was found.} {다른 버전의 설정파일을 찾았습니다.}
 
 # Dummy
 
@@ -155,3 +163,8 @@ mcset ko {$proc2} {}
 mcset ko {ADB $cmd} {}
 mcset ko {$detail} {}
 mcset ko "(\{\[^\}" {}
+mcset ko {File is required: %s} {File is required: %s}
+mcset ko {Access denied: %s} {Access denied: %s}
+mcset ko {Access denied: $s} {Access denied: $s}
+mcset ko {Cannot find classes.dex} {Cannot find classes.dex}
+mcset ko {Process error} {Process error}

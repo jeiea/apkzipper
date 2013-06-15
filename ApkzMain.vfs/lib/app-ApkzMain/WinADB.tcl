@@ -10,9 +10,6 @@ namespace eval WinADB {
 proc WinADB::adb args {
 	getVFile AdbWinApi.dll
 	getVFile AdbWinUsbApi.dll
-#	lassign [twapi::create_process [getVFile adb.exe] -cmdline {adb.exe start-server} -showwindow hidden] startup
-#	while {[twapi::process_exists $startup]} {after 100}
-#	exec [getVFile adb.exe] start-server &
 	set adbout [bgopen ::View::Print [getVFile adb.exe] {*}$args]
 
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
@@ -26,7 +23,7 @@ proc WinADB::adb args {
 	return $adbout
 }
 
-proc WinADB::AskForceInstall path {
+proc WinADB::askForceInstall path {
 	set ans [tk_dialog .askUninstall [mc Confirm] \
 		{It can occurs when original application already installed.
 		Do you uninstall and retry it?} [mc Abort] [mc {Retry with conserving data}] \
@@ -82,24 +79,25 @@ plugin {Import from phone} args {
 	if [file writable $dstPath] {
 		::WinADB::adb pull $path [AdaptPath $dstPath]
 	} {
-		::WinADB::adb pull $path [AdaptPath $::vfsRoot/..]
+		::WinADB::adb pull $path [AdaptPath $::exedir]
 	}
 }
 
 # TODO: 넣을 파일경로를 윈도우즈 가상경로로 만들어서..? ㅋㅋ
 # TODO: 다른 파일도 자동으로 푸시하도록... 이건 드래그로 처리하면 좋은데 ㅠㅠ
 plugin {Export to phone} {apkPath {dstPath ""}} {
+	set local [getResultApk $apkPath]
+	if [string is space $local] return
 	if {$dstPath == ""} {
-		set pushPath [InputDlg [mc {Type android push path}]]
+		set remote [InputDlg [mc {Type android push path}]]
 	} {
-		set pushPath $dstPath
+		set remote $dstPath
 	}
-	set resultPath [getResult $apkPath]
-	if [string is space $pushPath] return
-	::View::Print "$resultPath $pushPath\n"
-	::View::Print [mc Pushing...]
+	if [string is space $remote] return
+	::View::Print "Pushing... $local --> $remote\n"
+	WinADB::adb push $local $remote
 	::View::Print [mc { finished.}]\n
-	lappend ::hist([mc {Type android push path}]) $pushPath
+	addHist [mc {Type android push path}] $remote$
 }
 
 proc WinADB::isADBState args {
@@ -116,7 +114,7 @@ proc {WinADB::ADB logcat} bLogging {
 	variable logcatPID
 
 	if $bLogging {
-		set logfile [AdaptPath [file normalize $::vfsRoot/../logcat.txt]]
+		set logfile [AdaptPath [file normalize $::exedir/logcat.txt]]
 		WinADB::adb version
 		set logcatPID [exec [getVFile adb.exe] logcat >& $logfile &]
 		::View::Print "[mc {ADB logcat executed}]: $logfile\n"
@@ -151,9 +149,9 @@ plugin {Install} apkPath {
 		return
 	}
 
-	set resultPath [getResult $apkPath]
+	set resultPath [getResultApk $apkPath]
 	if [file exists $resultPath] {
-		::View::Print "[mc Installing]: $resultPath"
+		::View::Print "[mc Installing]: $resultPath\n"
 		set adbout [WinADB::adb install -r $resultPath]
 		# 성공처리만. 에러처리는 adb에서 일괄로 하자.
 	}

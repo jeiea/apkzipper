@@ -1,14 +1,13 @@
 # 전부 디버그때만 동작해야 할 부분. 릴리즈땐 없애야 한다.
 # 함수명 검색 잊지 말자.
 console show
-mcExtract . $::libpath/locale/ko.msg
+mcExtract $::libpath $::libpath/locale/ko.msg
 
 proc pval {args} {
 	foreach varname $args {
 		upvar $varname value
 		puts "$varname: $value"
 	}
-	puts {}
 }
 
 proc adb args {
@@ -16,10 +15,11 @@ proc adb args {
 }
 
 proc leavePrefix {cmdstr code result op} {
-	puts [format "cmdstr: %s\ncode: %s\nresult: %s\n" \
-			$cmdstr $code $result]
+	set codename [lindex {TCL_OK TCL_ERROR TCL_RETURN TCL_BREAK TCL_CONTINUE} $code]
+	puts [format "cmdstr: %s\n%s: %s\n" \
+			$cmdstr $codename $result]
 }
-#trace add execution bgopen leavestep leavePrefix
+#trace add execution Session::getRecentSessionNames leavestep leavePrefix
 
 # errorinfo는 번잡하다. 좀 가공해야지. proc 래핑이라 하는건가?
 # Tk에서 text위젯에 더블클릭 버그를 일으켰다. 뭐가 문젠 것 같은데.

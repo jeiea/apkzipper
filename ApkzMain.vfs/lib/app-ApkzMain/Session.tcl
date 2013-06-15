@@ -2,6 +2,9 @@ namespace eval Session {
 	variable cAppPaths {}
 	variable currentOp {}
 }
+oo::class create Session {
+	
+}
 
 proc Session::CommandParser command {
 	set cmd [lindex $command 0]
@@ -16,6 +19,7 @@ proc Session::CommandParser command {
 	}
 }
 
+# 당장은 필요없지만 나중에 임시 세션을 만들 경우를 위해 남겨 둠
 proc Session::makeSessionName apps {
 	set someFilename [file tail [lindex $apps 0]]
 	set num [llength $apps]
@@ -25,13 +29,48 @@ proc Session::makeSessionName apps {
 	return $someFilename
 }
 
+proc Session::getRecentSessionNames {} {
+	foreach apkList $::hist(recentApk) {
+		lappend numBucket([llength $apkList]) $apkList
+	}
+	foreach idx [array names numBucket] {
+		set numBucket($idx) [join $numBucket($idx) { }]
+	}
+
+	set ret {}
+	foreach namingTarget $::hist(recentApk) {
+		set label {}
+		foreach apk $namingTarget {
+			set idxDuplicate [lsearch -exact -all $numBucket([llength $namingTarget]) $apk]
+			if {[llength $idxDuplicate] == 1} {
+				set label $apk
+				break
+			}
+		}
+		if {$label ne {}} {
+			set filename [file tail $label]
+			set otherNum [expr [llength $namingTarget] - 1]
+			if {$otherNum == 0} {
+				lappend ret $filename
+			} {
+				lappend ret [mc {%1$s and %2$d others} $filename $otherNum]
+			}
+		} {
+			# safecode
+			lappend ret {}
+		}
+	}
+	
+	return $ret
+}
+
 proc Session::filterAndLoad paths {
 	set qualified [list]
 	set reply $::config(askExtension)
 
 	foreach path $paths {
 		if ![file readable $path] {
-			::View::Print [mc {Access denied: %1$s} $path]\n
+			::View::Print [mc {Access denied: $s} $path]\n
 			continue
 		} elseif [file isdirectory $path] {
 			lappend paths [glob $path {*.apk *.jar}]
@@ -55,6 +94,9 @@ proc Session::filterAndLoad paths {
 	}
 
 	set ::cAppPaths $qualified
+	if {$qualified ne {}} {
+		addHist recentApk $::cAppPaths
+	}
 	set ::View::cappLabel [makeSessionName $::cAppPaths]
 }
 
@@ -64,36 +106,25 @@ plugin {Select app} {args} {
 
 proc {Session::Select app} {args} {
 	global cAppPaths
-	# TODO: 역시 이것도 기본 시작 위치 설정. 나중에.
-	#if [string equal $default ""] {set initialfile ""} {set initialfile "-initialfile $default"}
 
-	# 귀찮아서 일단 미리 지정해둠.
 	if {$args != {}} {
 		set cAppPaths [lindex $args 0]
 	} {
 		set cAppPaths [dlgSelectAppFiles [mc {You can select multiple files or folders}]]
 	}
 
+	set cAppPaths [lsort $cAppPaths]
 	filterAndLoad $cAppPaths
 	if {$cAppPaths == {}} return
-	set idx [lsearch [getRecentSessionNames] $::View::cappLabel]
-	if {$idx == -1} {
-		set ::hist(recentApk) [concat [list $cAppPaths] $::hist(recentApk)]
-	} {
-		set ::hist(recentApk) [concat [list $cAppPaths] [lreplace $::hist(recentApk) $idx $idx]]
-	}
-}
-
-proc Session::getRecentSessionNames {} {
-	return [lmap apkList $::hist(recentApk) {makeSessionName $apkList}]
 }
 
 plugin {Select app recent} {} {
 	destroy .recentPop
 	set m [menu .recentPop -tearoff 0]
-	foreach recentApks $::hist(recentApk) {
-		$m add command -label [Session::makeSessionName $recentApks] \
-			-command [namespace code "{Session::Select app} [list $recentApks]"]
+
+	lmap label [Session::getRecentSessionNames] apkList $::hist(recentApk) {
+		$m add command -label $label \
+			-command [namespace code [list {Session::Select app} $apkList]]
 	}
 
 	tk_popup .recentPop [winfo pointerx .] [winfo pointery .]
@@ -128,24 +159,26 @@ proc Session::TraverseCApp pluginName {
 	}
 
 	set currentOp $pluginName
-	try {
-		if [info exist cAppPaths] {
-			foreach apkPath $cAppPaths {
-				if [catch [list $pluginName business $apkPath] errmsg errinfo] {
-					if {[dict exist $errinfo -errorcode] &&
-						[dict get $errinfo -errorcode] == 100} {
-						::View::Print "[mc ERROR]: $errmsg\n"
-					} {
-						if {[string first charset.MalformedInputException $errmsg] != -1} {
-							::View::Print "[mc ERROR]: [mc "File name malformed.\nPlease retry after rename. (e.g. test.apk)"]\n"
-						} {
-							::View::Print "[mc ERROR]: [dict get $errinfo -errorinfo]\n"
-						}
-					}
+	if [info exist cAppPaths] {
+		foreach apkPath $cAppPaths {
+			try {
+				$pluginName business $apkPath
+			} trap {CUSTOM ERR} {msg info} {
+				::View::Print "[mc ERROR]: $errmsg\n"
+			} on error {msg info} {
+				set errorinfo [dict get $info -errorinfo]
+				if {[string first charset.MalformedInputException $errorinfo] != -1} {
+					::View::Print [join [list \
+						[mc ERROR]:\ [mc {File name malformed.}]\n \
+						[mc {Please retry after rename. (e.g. test.apk)}]\n] {}]
+				} {
+					::View::Print "[mc ERROR]: $errorinfo\n"
+					puts $msg\n$info
 				}
 			}
 		}
-	} finally {set currentOp ""}
+	}
+	set currentOp {}
 }
 
 ::View::init

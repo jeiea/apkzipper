@@ -12,26 +12,7 @@ proc scan_dir {dirname pattern} {
 }
 
 
-proc bgopen_handler {callback chan} {
-	append ::bgData($chan) [set data [read $chan]]
-	catch {{*}$callback $data}
-	
-	if {[eof $chan]} {
-		fconfigure $chan -blocking true
-		set returnInfo ""
-		set isErr [catch {close $chan} errmsg returnInfo]
-		# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
-		# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
-		dict set returnInfo -errormsg $errmsg
-		dict set returnInfo -stdout $::bgData($chan)
-		unset ::bgData($chan)
-		set ::bgAlive($chan) $returnInfo
-	}
-}
-
 if {$tcl_platform(platform) == {windows}} {
-	
-	
 	proc bgopen_receive {callback chan} {
 		append ::bgData($chan) [set data [chan read $chan]]
 		catch {{*}$callback $data}
@@ -46,92 +27,81 @@ if {$tcl_platform(platform) == {windows}} {
 		return $output
 	}
 	
-	proc whenClose {hProc outw errw inw inr callback} {
-		set exitcode [twapi::get_process_exit_code $hProc]
-		twapi::close_handle $hProc
-		
-		foreach chan [list $outw $errw $inw $inr] {
-			chan close $chan
-		}
-		set stdoutData [bgopen_cleanup $callback $outr]
-		set stderrData [bgopen_cleanup $callback $errr]
-		
-		set ret [concat $stdoutData $stderrData]
-		if {$exitcode != 0} {
-			error $stdoutData $stderrData $exitcode
-		}
-		return $ret
-	}
-	
-	proc _bgopen {callback args} {
-		lassign [chan pipe] inr inw
+	proc bgopen {callback args} {
 		lassign [chan pipe] outr outw
 		lassign [chan pipe] errr errw
+		chan configure $outw -blocking false -buffering line
+		chan configure $errw -blocking false -buffering line
 		chan configure $outr -blocking false -buffering none
 		chan configure $errr -blocking false -buffering none
 		set pid [eval exec $args >@ $outw 2>@ $errw &]
-		puts "start: $args"
 		
 		set handleOut [list bgopen_receive $callback $outr]
 		set handleErr [list bgopen_receive $callback $errr]
-		chan event $outr readable $handleOut
-		chan event $errr readable $handleErr
+		fileevent $outr readable $handleOut
+		fileevent $errr readable $handleErr
 		
 		set hProc [twapi::get_process_handle $pid -access generic_execute]
-		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgWait$pid 0]\;#
-		vwait ::bgWait$pid
-		unset ::bgWait$pid
-
-#		while {[twapi::process_exists $pid]} {
-#			after 20
-#			update
-#		}
-
-#		set ::mutex($pid) [thread::mutex create -recursive]
-#		thread::mutex lock $::mutex($pid)
-#		twapi::wait_on_handle $hProc -async [list puts di]\;[list thread::mutex unlock ::mutex($pid)]\;#
-#		thread::mutex lock $::mutex($pid)
-#		thread::mutex unlock $::mutex($pid)
-#		thread::mutex destroy $::mutex($pid)
-#		unset ::mutex($pid)
+		set bgAlive($pid) 0
+		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgAlive($pid) 0]\;#
+		vwait ::bgAlive($pid)
 		set exitcode [twapi::get_process_exit_code $hProc]
 		twapi::close_handle $hProc
-		
-		foreach chan [list $outw $errw $inw $inr] {
-			chan close $chan
+		if {$::bgAlive($pid) eq {suspend}} {
+			error {Canceled by user}
 		}
+		unset ::bgAlive($pid)
+		
+		chan close $outw
+		chan close $errw
 		set stdoutData [bgopen_cleanup $callback $outr]
 		set stderrData [bgopen_cleanup $callback $errr]
 		
 		set ret [concat $stdoutData $stderrData]
 		if {$exitcode != 0} {
-			error $stdoutData $stderrData $exitcode
+			error [mc {Process error}] $stdoutData\n$stderrData bgopenError
 		}
 		return $ret
 	}
 	
-
-proc bgopen {callback args} {
-	set chan [open "| $args 2>@1" r]
-	fconfigure $chan -blocking false
-	fileevent $chan readable [list bgopen_handler $callback $chan]
-	set ::bgAlive($chan) {}
-	vwait ::bgAlive($chan)
-
-	set ret $::bgAlive($chan)
-	unset ::bgAlive($chan)
-	if {[dict get $ret -code] == 1} {
-		# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
-		error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
+	bind . <Destroy> {+
+		foreach pid [array names ::bgAlive] {
+			set ::bgAlive($pid) suspend
+		}
 	}
-	return [dict get $ret -stdout]
-}
-}
 
-bind MAINWIN <Destroy> {+
-	foreach bgproc {[array names ::bgAlive]} {
-		close $bgproc
-		tk_messageBox -title "close $bgproc"
+} else {
+	proc bgopen_handler {callback chan} {
+		append ::bgData($chan) [set data [read $chan]]
+		catch {{*}$callback $data}
+
+		if {[eof $chan]} {
+			fconfigure $chan -blocking true
+			set returnInfo {}
+			set isErr [catch {close $chan} errmsg returnInfo]
+			# errorinfo는 errmsg에 스택트레이스가 더 붙은 것이다.
+			# 여기선 사전에 담아두기만 하고, bgopen에서 error를 호출한다.
+			dict set returnInfo -errormsg $errmsg
+			dict set returnInfo -stdout $::bgData($chan)
+			unset ::bgData($chan)
+			set ::bgAlive($chan) $returnInfo
+		}
+	}
+
+	proc bgopen {callback args} {
+		set chan [open "| $args 2>@1" r]
+		fconfigure $chan -blocking false
+		fileevent $chan readable [list bgopen_handler $callback $chan]
+		set ::bgAlive($chan) {}
+		vwait ::bgAlive($chan)
+
+		set ret $::bgAlive($chan)
+		unset ::bgAlive($chan)
+		if {[dict get $ret -code] == 1} {
+			# errmsg로 지금까지 프로그램이 출력한 데이터(stdout)를 돌려줌.
+			error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
+		}
+		return [dict get $ret -stdout]
 	}
 }
 
@@ -168,11 +138,31 @@ proc seq args {
 	}
 }
 
+proc rdbleFile {args} {
+	foreach file $args {
+		if ![file isfile $file]||![file readable $file] {
+			return false
+		}
+	}
+	return true
+}
+
 proc AdaptPath file {file nativename [file normalize $file]}
 
 package require http
 proc httpcopy {url {file ""}} {
 	set url [string map {https:// http://} $url]
+
+	if {{PROCESSOR_ARCHITEW6432} in [array names ::env] && \
+		$::env(PROCESSOR_ARCHITEW6432) eq {AMD64}} {
+		set edition WOW64
+	} {
+		set edition {}
+	}
+	set    useragent {Mozilla/5.0 (compatible; MSIE 10.0; }
+	append useragent "$::tcl_platform(os) $::tcl_platform(osVersion); $edition)"
+	::http::config -useragent $useragent
+
 	set token [::http::geturl $url -progress httpCopyProgress]
 
 	#전역범위의 '배열'이라서 upvar처리를 해야한다.
@@ -327,14 +317,3 @@ proc mcExtract {dirname existing} {
 	close $catalog
 }
 
-proc loadcfg {name {default ""}} {
-	if [info exists ::config($name)] {
-		return $::config($name)
-	} {
-		return $default
-	}
-}
-
-proc setcfg {name value} {
-	set ::config($name) $value
-}

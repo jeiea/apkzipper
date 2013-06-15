@@ -1,29 +1,17 @@
-plugin Sox args {
-	set tmpdir [file dirname [getVFile sox.exe]]
-	getVFile zlib1.dll
-	getVFile pthreadgc2.dll
-
-	bgopen ::View::Print [getVFile sox.exe] {*}$args
+foreach jarfile {apktool signapk baksmali smali} {
+	proc $jarfile args [format {
+		return [Java -jar [getVFile %s.jar] {*}$args]
+	} $jarfile]
 }
 
-foreach jarfile {apktool signapk} {
-
-	proc $jarfile args "
-			return \[Java -jar \[getVFile $jarfile.jar] {*}\$args]
-		"
-
-}
-
-foreach exefile {fastboot optipng 7za aapt} {
-
-	proc $exefile args "
-			return \[bgopen ::View::Print \[getVFile $exefile.exe] {*}\$args]
-		"
-
+foreach exefile {fastboot optipng 7za aapt zipalign jd-gui} {
+	proc $exefile args [format {
+		return [bgopen ::View::Print [getVFile %s.exe] {*}$args]
+	} $exefile]
 }
 
 plugin Extract apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
 	if [file exist $cApp(proj)] {
 		file delete -force -- $cApp(proj)
@@ -32,14 +20,14 @@ plugin Extract apkPath {
 }
 
 plugin Decompile apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
 	apktool d {*}$::config(decomTargetOpt) -f $cApp(path) $cApp(proj)
-	7za -y x -o$cApp(proj) $cApp(path) META-INF -r
+	7za x -y -o$cApp(proj) $cApp(path) META-INF -r
 }
 
 plugin Compile apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
 	if ![file isdirectory $cApp(proj)] {
 		tk_messageBox -message [mc {Please extract/decompile app first.}]\n -icon info -type ok
@@ -48,7 +36,7 @@ plugin Compile apkPath {
 
 	if {[file extension $cApp(path)] == ".jar"} {
 		::View::Print [mc {jar compiling...}]\n
-		7za -y x -o$cApp(proj) $cApp(path) META-INF -r
+		7za x -y -o$cApp(proj) $cApp(path) META-INF -r
 	} else {
 		::View::Print [mc {apk compiling...}]\n
 	}
@@ -60,34 +48,31 @@ plugin Compile apkPath {
 	::View::Print [mc {Adjusting compressing level...}]\n
 	# INFO: -aoa는 overwrite all destination files이다
 	# TODO: file nativename... 귀찮지만 수동으로 그거 박는 게 견고한 듯
-	7za -y x -aoa -o$cApp(proj)\\temp $cApp(unsigned)
+	7za x -y -aoa -o$cApp(proj)\\temp $cApp(unsigned)
 
-	# 원랜 args로 시스템컴파일 할지 받도록 했는데, 그러다보니 Traverse에서 망해버려서
-	# System compile함수에서 이걸 인젝션해서 실행하는 것으로 ㅋ
-	variable systemcompile
-	catch {eval $systemcompile}
+	# System compile일 경우 별도의 작업
+	if {[info coroutine] ne {}} yield
 
+	# 원본사인 강제주입. 실행은 되도 앱 크래시의 요인이 될 수 있다.
 	if [file isdirectory $cApp(proj)/META-INF] {
 		file copy -force -- $cApp(proj)/META-INF $cApp(proj)/temp/META-INF
 	}
-
 	file delete -- $cApp(unsigned)
-	7za -y a -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\temp\\*
+	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\temp\\*
 	file delete -force -- $cApp(proj)\\temp
 }
 
 plugin {System compile} apkPath {
-	set ::Compile::systemcompile {
-			foreach metafile {resources.arsc AndroidManifest.xml} {
-				7za -y x -aoa -o[file nativename $cApp(proj)/temp] $cApp(path) $metafile
-			}
-		}
-	Compile business $apkPath
-	set ::Compile::systemcompile {}
+	coroutine compileRoutine Compile business $apkPath
+	getNativePathArray $apkPath cApp
+	foreach metafile {resources.arsc AndroidManifest.xml} {
+		7za x -y -aoa -o[file nativename $cApp(proj)/temp] $cApp(path) $metafile
+	}
+	compileRoutine
 }
 
 plugin Zip apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
 	if ![file isdirectory $cApp(proj)] {
 		tk_messageBox -message [mc {Please extract/decompile app first.}]\n -icon info -type ok
@@ -96,7 +81,7 @@ plugin Zip apkPath {
 
 	::View::Print Compressing...
 	file delete -- $cApp(unsigned)
-	7za -y a -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\*
+	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\*
 }
 
 plugin {Install framework} {} {
@@ -108,7 +93,7 @@ plugin {Install framework} {} {
 }
 
 plugin Sign apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
 	if [signapk -w [getVFile testkey.x509.pem] [getVFile testkey.pk8] $cApp(unsigned) $cApp(signed)] {
 		::View::Print "[mc {Signing failed}]: $cApp(name)\n"
@@ -119,26 +104,21 @@ plugin Sign apkPath {
 }
 
 plugin Zipalign apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
-	foreach path [list $cApp(signed) $cApp(unsigned) $cApp(path)] {
+	foreach path [list $cApp(signed) $cApp(unsigned)] {
 		if [file exist $path] {
-			if [catch {
-				set alignedPath [AdaptPath [file dirname $path]/aligned_$cApp(name)]
-				exec [getVFile zipalign.exe] -f 4 $path $alignedPath
-				file rename -force -- $alignedPath $path
-			}] {
-				::View::Print "[mc {Zipalign failed}]: $cApp(name)\n"
-			} {
-				::View::Print "[mc Zipaligned]: $cApp(name)\n"
-			}
+			set alignedPath [AdaptPath [file dirname $path]/aligned_$cApp(name)]
+			zipalign -f 4 $path $alignedPath
+			file rename -force -- $alignedPath $path
+			::View::Print "[mc Zipaligned]: $path\n"
 			break
 		}
 	}
 }
 
 plugin {Explore project} apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 	catch {exec explorer $cApp(proj)}
 }
 
@@ -148,7 +128,7 @@ plugin {Explore app dir} {} {
 }
 
 plugin {Optimize png} apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 
 	foreach pngfile [scan_dir $cApp(proj) *.png] {
 		optipng $pngfile
@@ -156,23 +136,13 @@ plugin {Optimize png} apkPath {
 
 }
 
-plugin {Recompress ogg} apkPath {
-	GetNativePathArray $apkPath cApp
-
-	foreach ogg [scan_dir $cApp(proj) *.ogg] {
-		set subpath [file nativename [string map [list [file dirname $cApp(proj)]/ ""] [file normalize $ogg]]]
-		::View::Print "[mc Processing]$subpath\n"
-		Sox  $ogg -C 0 $ogg
-	}
-}
-
 plugin {Switch sign} apkPath {
-	GetNativePathArray $apkPath cApp
+	getNativePathArray $apkPath cApp
 	if ![file exist $cApp(proj) {Extract $apkPath}
 		if [file exist $cApp(proj)/META-INF] {
 			file delete -force -- $cApp(proj)/META-INF
 		} {
-			7za -y x -o$cApp(proj) $cApp(path) META-INF -r
+			7za x -y -o$cApp(proj) $cApp(path) META-INF -r
 		}
 	}
 
@@ -189,7 +159,7 @@ proc {Clean folder} detail {
 	set target {}
 	if [info exist ::cAppPaths] {
 		foreach capp $::cAppPaths {
-			GetNativePathArray $capp cApp
+			getNativePathArray $capp cApp
 			switch $detail {
 				{Delete current result}				{lappend target $cApp(signed) $cApp(unsigned)}
 				{Delete current workdir}			{lappend target								  $cApp(proj)}
@@ -199,7 +169,7 @@ proc {Clean folder} detail {
 		}
 	}
 
-	set modDir $::vfsRoot/../modding
+	set modDir $::exedir/modding
 	switch $detail {
 		{Delete all result}				{lappend target {*}[glob -nocomplain -- $modDir/signed_*.apk] {*}[glob -nocomplain -- $modDir/unsigned_*.apk]}
 		{Delete all workdir}			{lappend target $::exedir/projects}
@@ -219,20 +189,20 @@ proc {Clean folder} detail {
 			file delete -force -- $item
 			incr count
 		}
+		update idletasks
 	}
 	::View::Print [mc {%d items are deleted.} $count]\n
 }
 
-proc {Check update} {} {
+plugin {Check update} {} {
 #	if [::View::running_other_task?] return
 
 	set ::currentOp "update"
-	set exit {set ::currentOp ""; return 0}
+	set exit {set ::currentOp ""; return}
 	set updateFileSignature {Apkz Update Information File}
 
 	::View::Print [mc {Checking update..}]\n
 
-	::http::config -useragent "Mozilla/5.0 (compatible; MSIE 10.0; $::tcl_platform(os) $::tcl_platform(osVersion);)"
 	set updateinfo [httpcopy http://db.tt/v7qgMqqN]
 	if ![string match $updateFileSignature* $updateinfo] {
 		::View::Print [mc {Update info not found. Please check website.}]\n
@@ -283,7 +253,7 @@ proc {Check update} {} {
 		} {
 			set filename {Apkzipper.exe}
 		}
-		set updatefile [AdaptPath [file normalize "$::vfsRoot/../$filename"]]
+		set updatefile [AdaptPath [file normalize "$::exedir/$filename"]]
 
 		foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
 			set success [catch {httpcopy $downloadurl $updatefile}]
@@ -298,4 +268,67 @@ proc {Check update} {} {
 		::View::Print "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"
 	}
 	eval $exit
+}
+
+plugin {Deodex} {apkPath} {
+	getNativePathArray $apkPath cApp
+	
+	set odex [file rootname $cApp(path)].odex
+	set dex [file nativename $cApp(proj)/classes.dex]
+	set dexDir [file rootname $cApp(proj)].odex/
+	ensureFiles $odex
+	
+	::View::Print deodexing...\n
+	file delete -force $dexDir $dex
+	set apkDir [file dirname $cApp(path)]
+	baksmali -d $apkDir/framework -d $apkDir -x $odex -o $dexDir
+	::View::Print Complete\n
+}
+
+plugin {Odex} {apkPath} {
+	getNativePathArray $apkPath cApp
+	
+	set dexDir [file rootname $cApp(proj)].odex
+	set dex [file nativename $cApp(proj)/classes.dex]
+	
+	::View::Print Odexing...\n
+	smali $dexDir -o $dex
+	::View::Print Complete\n
+}
+
+proc dex2jar {dex jar} {
+	set dex2jar [getVFile dex2jar]
+	Java -cp $dex2jar/* {com.googlecode.dex2jar.tools.Dex2jarCmd} -f -o $jar $dex
+}
+
+proc dex2jd {dex} {
+	set jar [file rootname $tmpdex].jar
+	dex2jar $tmpdex $jar
+	exec [getVFile jd-gui.exe] $jar &
+	return
+}
+
+plugin {View source} {apkPath} {
+	getNativePathArray $apkPath cApp
+
+	set tmpdex [file rootname $cApp(proj)].dex
+	foreach appIdx {path unsigned signed} {
+		if [file exist $cApp($appIdx)] {
+			7za e -y -aoa $cApp(path) -o$tmpdex classes.dex
+		}
+	}
+	if [rdbleFile $tmpdex] {
+		dex2jd $tmpdex
+		return
+	}
+	
+	set odex [file rootname $cApp(path)].odex
+	if [rdbleFile $odex] {
+		::Deodex business $apkPath
+		::Odex business $apkPath
+		dex2jd $cApp(proj)/classes.dex
+		return
+	}
+	
+	::View::Print [mc {Cannot find classes.dex}]\n
 }

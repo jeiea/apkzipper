@@ -28,7 +28,10 @@ if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 	source $libpath/ApkzDbg.tcl
 }
 
-LoadHistory
+loadConfig
+after 100 {
+	{::Check update} business
+}
 
 bind .p.f2.fLog.sb <Control-Shift-3> {
 	catch {console show}
@@ -36,6 +39,9 @@ bind .p.f2.fLog.sb <Control-Shift-3> {
 
 # 임시파일 제거
 bind MAINWIN <Destroy> {+
-	cleanupVFile
-	saveHistory
+	catch {
+		cleanupVFile
+		saveConfig
+	}
+	exit
 }

@@ -35,15 +35,13 @@ proc getVFile fileName {
 
 proc cleanupVFile {} {
 	if [info exist ::virtualTmpDir] {
-		if [info exist $::virtualTmpDir] {
-			file delete -force $::virtualTmpDir
-		}
+		file delete -force $::virtualTmpDir
 	}
 }
 
 # return latest apk including original.
-proc getResult _apkPath {
-	GetNativePathArray $_apkPath cApp
+proc getResultApk _apkPath {
+	getNativePathArray $_apkPath cApp
 	foreach result {signed unsigned path} {
 		if [file exists $cApp($result)] {
 			return $cApp($result)
@@ -52,7 +50,7 @@ proc getResult _apkPath {
 	return
 }
 
-proc GetNativePathArray {apkPath newVar} {
+proc getNativePathArray {apkPath newVar} {
 	upvar $newVar cApp
 
 	set cApp(path) $apkPath
@@ -85,9 +83,22 @@ proc dlgSelectAppFiles title {
 	return $apps
 }
 
+proc ensureFiles args {
+	foreach path $args {
+		if ![file isfile $path] {
+			error [mc {File is required: %s} $path] 
+		}
+		if ![file readable $path] {
+			error [mc {Access denied: %s} $path] 
+		}
+	}
+}
+
 oo::class create Plugin {
 	constructor {args body} {
-		oo::objdefine [self] method business $args $body
+		oo::objdefine [self] method business $args \
+			[join [list {. config -cursor wait} \
+				"try {$body} finally {. config -cursor {}}"] \n]
 	}
 }
 
