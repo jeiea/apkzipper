@@ -1,11 +1,15 @@
-
 namespace eval View {
-	namespace export TraverseCApp Print
+	namespace export TraverseCApp
 	variable currentOp ""
 	variable cappLabel ""
 
 	namespace import ::tooltip::*
 }
+
+package require Tk
+package require Ttk
+#foreach widget {button checkbutton entry frame label \
+#	radiobutton scale scrollbar} 
 
 proc View::init args {
 	widget.generate
@@ -15,9 +19,9 @@ proc View::init args {
 	bind . <Escape> {destroy .}
 	tooltip delay 50
 
-	#bind all <Key-Control_L> {Print "a\n"}
-	#bind all <KeyRelease-Control_L> {Print "b\n"}
-	#bind all <KeyPress> {::View::Print "%%K=%K, %%A=%A, %%k=%k\n"}
+	#bind all <Key-Control_L> {puts "a\n"}
+	#bind all <KeyRelease-Control_L> {puts "b\n"}
+	#bind all <KeyPress> {puts "%%K=%K, %%A=%A, %%k=%k\n"}
 
 	wm minsize . 450 200
 	wm geometry . 640x480
@@ -56,59 +60,13 @@ proc View::widget.generate {} {
 
 	# 버튼 생성 끝
 
-	# 텍스트박스 생성
-	set under [ttk::frame .p.f2.fLog]
-	pack $under -side top -expand 1 -fill both
-	pack [text $under.tCmd -width 0 -height 0 -yscrollcommand "$under.sb set " -wrap char] -side left -fill both -expand 1
-	pack [ttk::scrollbar $under.sb -orient vertical -command "$under.tCmd yview "] -side right -fill both
-
-	foreach ideal {"나눔고딕코딩" "맑은 고딕" "Consolas" "돋움체"} {
-		if {[lsearch -exact [font families] $ideal] != -1} {
-			$under.tCmd config -font [list $ideal 9]
-			break
-		}
-	}
-	namespace inscope :: [list rename $under.tCmd _$under.tCmd]
-
-	proc ::$under.tCmd args {
-		switch -exact -- [lindex $args 0] {
-			insert {}
-			delete {}
-			default {
-				return [eval _.p.f2.fLog.tCmd $args]
-			}
-		}
-	}
-
-	unset under
-
-	proc Print data {
-		set wLogText _.p.f2.fLog.tCmd
-		$wLogText insert end $data
-		$wLogText yview end
-	}
+	textcon.generate
 
 	pack [ttk::entry .p.f2.ePrompt] -fill x -side bottom
 	bind . <FocusIn> {
 		if {[string first "%W" ".p.f2.fLog.tCmd"] == -1} {
 			namespace code {focus .p.f2.ePrompt}
 		}
-	}
-
-	# event의 mapping keys to virtual event를 자세히 읽어야 하는구나 ㅡㅡ;
-	# 대충 이런 Custom event가 우선순위가 높고, 별 처리를 안 해주면 다른 이벤트는 처리 안 하는 듯 하다.
-	# 아님 break해도 의미가 있고.
-	# 근데 return 이거 빼면 윈키 누를 때 에러뜬다. 이유가 뭐였더라..
-	bind .p.f2.fLog.tCmd <<Copy>> return
-	bind .p.f2.fLog.tCmd <<SelectAll>> return
-	bind .p.f2.fLog.tCmd <KeyPress> {
-		# Control_L 같은 Modifier는 일단 통과
-		if {[string first _ "%K"] != -1} return
-		# 방향키도 범위선택에 중요하므로 통과
-		if [regexp {Up|Down|Left|Right} "%K"] return
-
-		focus .p.f2.ePrompt
-		event generate .p.f2.ePrompt <KeyPress> -keycode %k
 	}
 
 	bind .p.f2.ePrompt <Return> {
@@ -119,7 +77,6 @@ proc View::widget.generate {} {
 		}
 	}
 	focus .p.f2.ePrompt
-	#텍스트박스 생성 끝
 
 	foreach fram [winfo children .p.f1] {
 		grid rowconfigure $fram [seq [llength [winfo children $fram]]] -weight 1
@@ -136,6 +93,81 @@ proc View::widget.generate {} {
 		{::Session::Select app} $dropPaths
 
 		return %A
+	}
+}
+
+proc View::textcon.generate {} {
+	set underframe [ttk::frame .p.f2.fLog]
+	pack $underframe -side top -expand 1 -fill both
+	pack [text $underframe.tCmd -width 0 -height 0 \
+		-yscrollcommand "$underframe.sb set " -wrap char] -side left -fill both -expand 1
+	pack [ttk::scrollbar $underframe.sb -orient vertical \
+		-command "$underframe.tCmd yview "] -side right -fill both
+
+	variable tCon $underframe.tCmd
+
+	foreach ideal {"나눔고딕코딩" "맑은 고딕" "Consolas" "돋움체"} {
+		if {[lsearch -exact [font families] $ideal] != -1} {
+			$tCon config -font [list $ideal 9]
+			break
+		}
+	}
+
+	foreach level {Verbose Debug Info Warning Error} {
+		global rd$level wr$level
+		lassign [chan pipe] rdLevel wrLevel
+		lassign [list $rdLevel $wrLevel] ::rd$level ::wr$level
+		chan configure $rdLevel -blocking false -buffering none
+		chan configure $wrLevel -blocking false -buffering none
+		chan event $rdLevel readable [namespace code [list tkPuts $rdLevel $level]]
+	}
+
+	$tCon tag config Error -foreground red
+	$tCon tag config Warning -foreground #ee4400
+	$tCon tag config Verbose -elide 1
+	$tCon tag config Debug -foreground #000040
+
+	namespace inscope :: [list rename $tCon _$tCon]
+
+	proc ::$tCon args {
+		switch -exact -- [lindex $args 0] {
+			insert {}
+			delete {}
+			default {
+				return [eval _.p.f2.fLog.tCmd $args]
+			}
+		}
+	}
+
+	proc tkPuts {rdLevel tag} {
+		set tCon _.p.f2.fLog.tCmd
+		set data [read $rdLevel]
+		
+		if {[lindex [$tCon yview] 1] == 1} {
+			set autoscroll true
+		} {
+			set autoscroll false
+		}
+		$tCon insert end $data $tag
+		if $autoscroll {
+			$tCon yview end
+		}
+	}
+	
+	# event의 mapping keys to virtual event를 자세히 읽어야 하는구나 ㅡㅡ;
+	# 대충 이런 Custom event가 우선순위가 높고, 별 처리를 안 해주면 다른 이벤트는 처리 안 하는 듯 하다.
+	# 아님 break해도 의미가 있고.
+	# 근데 return 이거 빼면 윈키 누를 때 에러뜬다. 이유가 뭐였더라..
+	bind $tCon <<Copy>> return
+	bind $tCon <<SelectAll>> return
+	bind $tCon <KeyPress> {
+		# Control_L 같은 Modifier는 일단 통과
+		if {[string first _ "%K"] != -1} return
+		# 방향키도 범위선택에 중요하므로 통과
+		if [regexp {Up|Down|Left|Right} "%K"] return
+
+		focus .p.f2.ePrompt
+		event generate .p.f2.ePrompt <KeyPress> -keycode %k
 	}
 }
 
@@ -187,7 +219,7 @@ proc View::menu.generate {} {
 
 	foreach {label cmd} [list \
 		{Check update}	{{::Check update} business} \
-		{Visit website}	{eval exec [auto_execok start] "" http://ddwroom.tistory.com/ &} \
+		{Visit website}	{eval exec [auto_execok start] {} http://ddwroom.tistory.com/ &} \
 		Help {tk_messageBox -title [mc Sorry] -detail [mc {Not yet ready}]}] \
 	{
 		$mEtc add command -label [mc $label] -command $cmd
@@ -201,11 +233,31 @@ proc View::menu.generate {} {
 	}
 }
 
-oo::class create CapturingTransform {
+oo::class create InterChan {
+	constructor {body} {
+		oo::objdefine [self] method write {chan data} $body
+	}
+	method initialize {ch mode} {
+		return {initialize finalize watch write}
+	}
+	method finalize {ch} {
+		my destroy
+	}
+	method watch {ch events} {
+		# Must be present but we ignore it because we do not
+		# post any events
+	}
+}
+
+oo::class create CapturingChan {
 	variable var
-	constructor {varName} {
+	constructor {varnameOrArgs {body ""}} {
 		# Make an alias from the instance variable to the global variable
-		my eval [list upvar \#0 $varName var]
+		if {[llength $varnameOrArgs] == 2} {
+			oo::objdefine [self] method write $varnameOrArgs $body
+		} {
+			my eval [list upvar \#0 $varnameOrArgs var]
+		}
 	}
 	method initialize {handle mode} {
 		if {$mode ne "write"} {error "can't handle reading"}
@@ -214,18 +266,14 @@ oo::class create CapturingTransform {
 	method finalize {handle} {
 		# Do nothing, but mandatory that it exists
 	}
-
 	method write {handle bytes} {
 		append var $bytes
-		set wLogText _.p.f2.fLog.tCmd
-		$wLogText insert end $data
-		$wLogText yview end
 		# Return the empty string, as we are swallowing the bytes
-		return ""
+		return {}
 	}
 }
 
 #set myBuffer ""
-#chan push stdout [CapturingTransform new myBuffer]
+#chan push stdout [CapturingChan new myBuffer]
 
 #chan pop stdout

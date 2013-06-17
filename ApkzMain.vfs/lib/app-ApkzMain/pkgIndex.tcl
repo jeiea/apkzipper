@@ -1,5 +1,5 @@
 
-set apkzver 2.1
+set apkzver 2.2
 
 package ifneeded app-ApkzMain $apkzver [format {
 	package provide app-ApkzMain %1$s

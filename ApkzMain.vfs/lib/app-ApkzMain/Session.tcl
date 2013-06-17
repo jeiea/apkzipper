@@ -10,7 +10,7 @@ proc Session::CommandParser command {
 	set cmd [lindex $command 0]
 	# HACK: 나중에 VFS처럼 만들어야... 이것도 좋지만 좀 더 깔끔하게
 	if {$cmd == 0} {
-		Print "adb [lrange $command 1 end]"
+		puts $::wrDebug "adb [lrange $command 1 end]"
 		WinADB::adb pull {*}[lrange $command 1 end]
 		return
 	}
@@ -70,7 +70,7 @@ proc Session::filterAndLoad paths {
 
 	foreach path $paths {
 		if ![file readable $path] {
-			::View::Print [mc {Access denied: $s} $path]\n
+			puts $::wrError [mc {Access denied: %s} $path]
 			continue
 		} elseif [file isdirectory $path] {
 			lappend paths [glob $path {*.apk *.jar}]
@@ -164,16 +164,18 @@ proc Session::TraverseCApp pluginName {
 			try {
 				$pluginName business $apkPath
 			} trap {CUSTOM ERR} {msg info} {
-				::View::Print "[mc ERROR]: $errmsg\n"
+				puts $::wrError "$msg: $info\n"
+			} trap bgopenError {msg info} {
+				puts $::wrError $msg
+				puts $::wrVerbose $info
 			} on error {msg info} {
 				set errorinfo [dict get $info -errorinfo]
 				if {[string first charset.MalformedInputException $errorinfo] != -1} {
-					::View::Print [join [list \
+					puts $::wrWarning [join [list \
 						[mc ERROR]:\ [mc {File name malformed.}]\n \
 						[mc {Please retry after rename. (e.g. test.apk)}]\n] {}]
 				} {
-					::View::Print "[mc ERROR]: $errorinfo\n"
-					puts $msg\n$info
+					puts $::wrError "[mc ERROR]: $errorinfo\n"
 				}
 			}
 		}

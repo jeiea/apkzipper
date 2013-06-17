@@ -3,7 +3,7 @@ plugin {Recompress ogg} apkPath {
 
 	foreach ogg [scan_dir $cApp(proj) *.ogg] {
 		set subpath [file nativename [string map [list [file dirname $cApp(proj)]/ ""] [file normalize $ogg]]]
-		::View::Print "[mc Processing]$subpath\n"
+		puts $::wrDebug "[mc Processing]$subpath\n"
 		Sox  $ogg -C 0 $ogg
 	}
 }
@@ -13,5 +13,5 @@ plugin Sox args {
 	getVFile zlib1.dll
 	getVFile pthreadgc2.dll
 
-	bgopen ::View::Print [getVFile sox.exe] {*}$args
+	bgopen [list puts $::wrDebug] [getVFile sox.exe] {*}$args
 }

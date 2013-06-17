@@ -13,7 +13,7 @@ proc Java args {
 	}
 
 	# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
-	bgopen ::View::Print $javapath {*}$args
+	bgopen [list puts $::wrDebug] $javapath {*}$args
 	return 0
 }
 
@@ -96,9 +96,13 @@ proc ensureFiles args {
 
 oo::class create Plugin {
 	constructor {args body} {
-		oo::objdefine [self] method business $args \
-			[join [list {. config -cursor wait} \
-				"try {$body} finally {. config -cursor {}}"] \n]
+		oo::objdefine [self] method business $args [format {
+			. config -cursor wait
+			$::View::tCon yview end
+			try {%s} finally {
+				. config -cursor {}
+			}
+		} $body]
 	}
 }
 

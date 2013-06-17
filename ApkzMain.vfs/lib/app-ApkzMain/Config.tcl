@@ -2,8 +2,8 @@
 # 전역변수 선언부.
 ::msgcat::mcload $libpath/locale
 set vfsRoot [file dirname [file dirname $libpath]]
-set exedir [file dirname $vfsRoot]
-set env(PATH) "$exedir;$env(PATH)"
+set exeDir [file dirname $vfsRoot]
+set env(PATH) "$exeDir;$env(PATH)"
 array set config {
 	zlevel	9
 	decomTargetOpt	"     "
@@ -14,11 +14,11 @@ array set config {
 		1	{Extract}			{}
 		1	{Decompile}			{Install framework}
 		2	{Explore project}	{Explore app dir}
-		2	{Optimize png}		{}
-		2	{Deodex}			{Odex}
+		2	{Optimize png}		{View java source}
+		2	{Deodex}			{Dex}
 		3	{Zip}				{Zipalign}
 		3	{Compile}			{System compile}
-		3	{Sign}				{}
+		3	{Sign}				{Explore dex dir}
 		4	{Install}			{}
 		4	{Export to phone}	{}
 	}
@@ -74,12 +74,13 @@ proc Config::addHist {key val} {
 	if {[llength $::hist($key)] >= $::config(maxHistory)} {
 		set ::hist($key) [lrange $::hist($key) 0 $::config(maxHistory)-1]
 	}
+	saveConfig
 }
 
 # 실행파일 경로에 설정파일이 있으면, 그 설정파일을 씀.
 proc Config::getConfigFilePath {} {
-	if [file exist $::exedir/apkz.cfg] {
-		return $::exedir/apkz.cfg
+	if [file exist $::exeDir/apkz.cfg] {
+		return $::exeDir/apkz.cfg
 	} {
 		return $::env(appdata)/apkz.cfg 
 	}
@@ -113,6 +114,7 @@ proc Config::vcompare {a b subver} {
 proc Config::loadConfig {} {
 	variable fileSignature
 
+	try {
 	fconfigure [set configfile [open [getConfigFilePath] r]] -encoding utf-8
 	if {[scan [gets $configfile] "$fileSignature %s" fileVer] != 1} {
 		return
@@ -139,6 +141,12 @@ proc Config::loadConfig {} {
 
 	if {$::hist(recentApk) != {}} {
 		{::Session::Select app} [lindex $::hist(recentApk) 0]
+	}
+
+	} trap {POSIX ENOENT} {} {
+		puts $::wrVerbose [mc {It seems config file not exists. Default applied.}]
+	} on error {msg info} {
+		puts $::wrVerbose [mc {Error opening config file: %s} $info]
 	}
 }
 

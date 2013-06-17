@@ -15,7 +15,7 @@ proc scan_dir {dirname pattern} {
 if {$tcl_platform(platform) == {windows}} {
 	proc bgopen_receive {callback chan} {
 		append ::bgData($chan) [set data [chan read $chan]]
-		catch {{*}$callback $data}
+		{*}$callback $data
 	}
 	
 	proc bgopen_cleanup {callback chan} {
@@ -36,12 +36,12 @@ if {$tcl_platform(platform) == {windows}} {
 		chan configure $errr -blocking false -buffering none
 		set pid [eval exec $args >@ $outw 2>@ $errw &]
 		
-		set handleOut [list bgopen_receive $callback $outr]
-		set handleErr [list bgopen_receive $callback $errr]
-		fileevent $outr readable $handleOut
-		fileevent $errr readable $handleErr
+		set handleOut [list bgopen_receive [list puts -nonewline $::wrDebug] $outr]
+		set handleErr [list bgopen_receive [list puts -nonewline $::wrError] $errr]
+		chan event $outr readable $handleOut
+		chan event $errr readable $handleErr
 		
-		set hProc [twapi::get_process_handle $pid -access generic_execute]
+		set hProc [twapi::get_process_handle $pid -access generic_all]
 		set bgAlive($pid) 0
 		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgAlive($pid) 0]\;#
 		vwait ::bgAlive($pid)
@@ -59,7 +59,7 @@ if {$tcl_platform(platform) == {windows}} {
 		
 		set ret [concat $stdoutData $stderrData]
 		if {$exitcode != 0} {
-			error [mc {Process error}] $stdoutData\n$stderrData bgopenError
+			error [mc {Runtime error occured.}] $args bgopenError
 		}
 		return $ret
 	}
@@ -246,11 +246,13 @@ proc InputDlg {msg} {
 		return {}
 	} {
 		toplevel .pul
+		wm minsize .pul 300 20
 	}
 	wm title .pul [mc {Input}]
 
-	pack [ttk::label .pul.label -text $msg] -side top
-	pack [ttk::combobox .pul.entry -values [lrange $::hist($msg) 1 end]] -side bottom -fill x
+	set packOption {-side top -fill x -expand true}
+	pack [label .pul.label -text $msg -anchor center] {*}$packOption
+	pack [ttk::combobox .pul.entry -values [lrange $::hist($msg) 1 end]] {*}$packOption
 	.pul.entry insert 0 [lindex $::hist($msg) 0]
 	.pul.entry selection range 0 end
 	foreach widget {.pul .pul.label .pul.entry} {

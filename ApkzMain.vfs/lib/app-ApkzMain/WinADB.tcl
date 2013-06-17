@@ -10,14 +10,14 @@ namespace eval WinADB {
 proc WinADB::adb args {
 	getVFile AdbWinApi.dll
 	getVFile AdbWinUsbApi.dll
-	set adbout [bgopen ::View::Print [getVFile adb.exe] {*}$args]
+	set adbout [bgopen [list puts $::wrDebug] [getVFile adb.exe] {*}$args]
 
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
 	# 저 adbErrMap을 쓰면 될 듯
 	variable adbErrMap
 	foreach errmsg [array names adbErrMap] {
 		if [regexp -nocase $errmsg $adbout] {
-			::View::Print $adbErrMap($errmsg)\n
+			puts $::wrError $adbErrMap($errmsg)
 		}
 	}
 	return $adbout
@@ -57,30 +57,37 @@ proc WinADB::adb_waitfor cmd {
 	#		::twapi::set_console_active_screen_buffer $a
 	#		::twapi::set_console_screen_buffer_size $hConOut {80 25}
 
+	global hConOut
 	set hConOut [::twapi::get_console_handle stdout]
-	set bufferInfo [::twapi::get_console_screen_buffer_info $hConOut -all]
-	set idealSize [dict get $bufferInfo -windowlocation]
-	lset idealSize 2 [expr [lindex $idealSize 2] - 2]
-	lset idealSize 3 [expr [lindex $idealSize 3] - 2]
-	::twapi::set_console_window_location $hConOut $idealSize
+	set idealSize [::twapi::get_console_window_maxsize]
+	set width [expr [lindex $idealSize 0] - 3]
+	set height [expr [lindex $idealSize 1] + 3000]
+	::twapi::set_console_screen_buffer_size $hConOut [list $width $height]
+	set hWnd [::twapi::get_console_window]
+	::twapi::maximize_window $hWnd
+#	get_window_coordinates HWIN
 	::twapi::free_console
 }
 
 plugin {Import from phone} args {
 	if {$args != ""} {
-		set path $args
+		set remote $args
 	} {
-		set path [InputDlg [mc {Type path of android file}]]
-		if [string is space $path] return
+		set remote [InputDlg [mc {Type remote path to pull}]]
+		if [string is space $remote] return
 	}
-	addHist [mc {Type path of android file}] $path
+	addHist [mc {Type remote path to pull}] $remote
 
-	set dstPath [file dirname [lindex $::cAppPaths 0]]
-	if [file writable $dstPath] {
-		::WinADB::adb pull $path [AdaptPath $dstPath]
+	set primaryApp [lindex $::cAppPaths 0]
+	if {$primaryApp ne {}} {
+		set local [file dirname $primaryApp]
 	} {
-		::WinADB::adb pull $path [AdaptPath $::exedir]
+		set local $::exeDir
 	}
+	set local [AdaptPath $local/[file tail $remote]]
+	puts $::wrInfo [mc {Pulling... %s --> %s} $remote $local]
+	::WinADB::adb pull $remote $local
+	{::Select app} business [list $local]
 }
 
 # TODO: 넣을 파일경로를 윈도우즈 가상경로로 만들어서..? ㅋㅋ
@@ -89,15 +96,15 @@ plugin {Export to phone} {apkPath {dstPath ""}} {
 	set local [getResultApk $apkPath]
 	if [string is space $local] return
 	if {$dstPath == ""} {
-		set remote [InputDlg [mc {Type android push path}]]
+		set remote [InputDlg [mc {Type remote path to push}]]
 	} {
 		set remote $dstPath
 	}
 	if [string is space $remote] return
-	::View::Print "Pushing... $local --> $remote\n"
+	puts $::wrInfo [mc {Pushing... %s --> %s} $local $remote]]
 	WinADB::adb push $local $remote
-	::View::Print [mc { finished.}]\n
-	addHist [mc {Type android push path}] $remote$
+	puts $::wrInfo [mc { finished.}]
+	addHist [mc {Type remote path to push}] $remote
 }
 
 proc WinADB::isADBState args {
@@ -114,28 +121,28 @@ proc {WinADB::ADB logcat} bLogging {
 	variable logcatPID
 
 	if $bLogging {
-		set logfile [AdaptPath [file normalize $::exedir/logcat.txt]]
+		set logfile [AdaptPath [file normalize $::exeDir/logcat.txt]]
 		WinADB::adb version
 		set logcatPID [exec [getVFile adb.exe] logcat >& $logfile &]
-		::View::Print "[mc {ADB logcat executed}]: $logfile\n"
+		puts $::wrInfo [mc {ADB logcat executed: %s} $logfile]
 	} {
 		twapi::end_process $logcatPID -force
-		::View::Print [mc {ADB logcat terminated}]
+		puts $::wrInfo [mc {ADB logcat terminated}]
 	}
 }
 
 proc {WinADB::ADB connect} {} {
 	set address [InputDlg [mc {Type android net address}]]
 	if [string is space $address] return
-	::View::Print [mc {ADB connecting...}]\n
-	adb connect $address
 	addHist [mc {Type android net address}] $address
+	puts $::wrInfo [mc {ADB connecting...}]
+	adb connect $address
 	#		TODO: 이런식으로 stdin, stderr, stdout을 지정해야 할 듯
 	#		::twapi::create_process {} -cmdline "cmd /C echo [mc {Connecting...}] & \
 	#			[::getVFile adb.exe] connect $address $config(actionAfterConnect)" \
 	#			-title [mc "ADB Connect"] -newconsole 1 -inherithandles 1
 
-	eval $::config(actionAfterConnect)
+#	eval $::config(actionAfterConnect)
 }
 
 proc {WinADB::Uninstall} apkPath {
@@ -145,13 +152,13 @@ proc {WinADB::Uninstall} apkPath {
 
 plugin {Install} apkPath {
 	if ![WinADB::isADBState device] {
-		::View::Print [mc {Please connect to device first.}]\n
+		puts $::wrWarning [mc {Please connect to device first.}]
 		return
 	}
 
 	set resultPath [getResultApk $apkPath]
 	if [file exists $resultPath] {
-		::View::Print "[mc Installing]: $resultPath\n"
+		puts $::wrInfo [mc {Installing: %s} $resultPath]
 		set adbout [WinADB::adb install -r $resultPath]
 		# 성공처리만. 에러처리는 adb에서 일괄로 하자.
 	}

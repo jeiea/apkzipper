@@ -1,10 +1,10 @@
-package provide app-ApkzMain 2.1
+package provide app-ApkzMain 2.2
 
 set libpath [file dirname [info script]]
 lappend auto_path [file dirname $libpath]
+tk appname ApkZipper2
 
 package require Tcl
-package require Tk
 package require twapi
 package require tkdnd
 package require tooltip
