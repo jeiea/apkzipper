@@ -174,3 +174,22 @@ mcset ko {It seems config file not exists. Default applied.} {설정파일이 �
 mcset ko {Error opening config file: %s} {설정파일을 여는 중 에러발생: %s}
 mcset ko {Runtime error occured.} {런타임 에러가 발생했습니다.}
 mcset ko {Dexing... } {Dexing... }
+mcset ko {Path} {Path}
+mcset ko {Is directory?} {폴더여부}
+mcset ko {Extracting...} {압축 푸는 중...}
+mcset ko {Extraction finished.} {압축이 풀렸습니다.}
+mcset ko {Decompiling...} {디컴파일 중...}
+mcset ko {Successfully decompiled.} {디컴파일 되었습니다.}
+mcset ko {Sucessfully compiled.} {컴파일 되었습니다.}
+mcset ko {Restoring original resource and manifest...} {원본 리소스와 매니페스트 복원 중...}
+mcset ko {Compressing...} {압축 중...}
+mcset ko {Compressed.} {압축되었습니다.}
+mcset ko {Framework installing...} {프레임워크 설치 중...}
+mcset ko {Framework installed.} {프레임워크가 전부 설치되었습니다.}
+mcset ko {Signing failed: %s} {사인 실패: %s}
+mcset ko {Signed: %s} {사인됨: %s}
+mcset ko {Zipaligned: %s} {압축 정렬 됨: %s}
+mcset ko {Zipaligning...} {압축 정렬 중...}
+mcset ko {Picture optimizing...} {그림 파일 최적화 중...}
+mcset ko {Picture optimization finished.} {그림 파일 최적화 완료.}
+mcset ko {Converting dex to jar...} {dex를 jar로 변환 중...}

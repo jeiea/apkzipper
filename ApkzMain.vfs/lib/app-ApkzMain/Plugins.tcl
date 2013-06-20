@@ -48,17 +48,21 @@ foreach exefile {fastboot optipng 7za aapt zipalign jd-gui} {
 plugin Extract apkPath {
 	getNativePathArray $apkPath cApp
 
+	puts $::wrInfo [mc {Extracting...}]
 	if [file exist $cApp(proj)] {
 		file delete -force -- $cApp(proj)
 	}
 	7za x -y -o$cApp(proj) $cApp(path)
+	puts $::wrInfo [mc {Extraction finished.}]
 }
 
 plugin Decompile apkPath {
 	getNativePathArray $apkPath cApp
 
+	puts $::wrInfo [mc {Decompiling...}]
 	apktool d {*}$::config(decomTargetOpt) -f $cApp(path) $cApp(proj)
 	7za x -y -o$cApp(proj) $cApp(path) META-INF -r
+	puts $::wrInfo [mc {Successfully decompiled.}]
 }
 
 plugin Compile apkPath {
@@ -86,7 +90,7 @@ plugin Compile apkPath {
 	7za x -y -aoa -o$cApp(proj)\\temp $cApp(unsigned)
 
 	# System compile일 경우 별도의 작업
-	if {[info coroutine] ne {}} yield
+	if {[info coroutine] eq {compileRoutine}} yield
 
 	# 원본사인 강제주입. 실행은 되도 앱 크래시의 요인이 될 수 있다.
 	if [file isdirectory $cApp(proj)/META-INF] {
@@ -95,10 +99,15 @@ plugin Compile apkPath {
 	file delete -- $cApp(unsigned)
 	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\temp\\*
 	file delete -force -- $cApp(proj)\\temp
+	
+	puts $::wrInfo [mc {Sucessfully compiled.}]
 }
 
 plugin {System compile} apkPath {
 	coroutine compileRoutine Compile business $apkPath
+	
+	puts $::wrDebug [mc {Restoring original resource and manifest...}]
+	
 	getNativePathArray $apkPath cApp
 	foreach metafile {resources.arsc AndroidManifest.xml} {
 		7za x -y -aoa -o[file nativename $cApp(proj)/temp] $cApp(path) $metafile
@@ -114,16 +123,19 @@ plugin Zip apkPath {
 		return
 	}
 
-	puts $::wrInfo Compressing...
+	puts $::wrInfo [mc Compressing...]
 	file delete -- $cApp(unsigned)
 	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\*
+	puts $::wrInfo [mc Compressed.]
 }
 
 plugin {Install framework} {} {
 	set frameworks [dlgSelectAppFiles [mc {Select framework file or folder}]]
 
 	if {$frameworks != ""} {
+		puts $::wrInfo [mc {Framework installing...}]
 		foreach framework $frameworks {apktool if $framework}
+		puts $::wrInfo [mc {Framework installed.}]
 	}
 }
 
@@ -131,10 +143,10 @@ plugin Sign apkPath {
 	getNativePathArray $apkPath cApp
 
 	if [signapk -w [getVFile testkey.x509.pem] [getVFile testkey.pk8] $cApp(unsigned) $cApp(signed)] {
-		puts $::wrError "[mc {Signing failed}]: $cApp(name)\n"
+		puts $::wrError [mc {Signing failed: %s} $cApp(name)]
 	} {
 		file delete -- $cApp(unsigned)
-		puts $::wrInfo "[mc Signed]: $cApp(name)\n"
+		puts $::wrInfo [mc {Signed: %s} $cApp(name)]
 	}
 }
 
@@ -143,10 +155,11 @@ plugin Zipalign apkPath {
 
 	foreach path [list $cApp(signed) $cApp(unsigned)] {
 		if [file exist $path] {
+			puts $::wrInfo [mc {Zipaligning...}]
 			set alignedPath [AdaptPath [file dirname $path]/aligned_$cApp(name)]
 			zipalign -f 4 $path $alignedPath
 			file rename -force -- $alignedPath $path
-			puts $::wrInfo "[mc Zipaligned]: $path\n"
+			puts $::wrInfo [mc {Zipaligned: %s} $path]
 			break
 		}
 	}
@@ -173,10 +186,11 @@ plugin {Explore dex dir} apkPath {
 plugin {Optimize png} apkPath {
 	getNativePathArray $apkPath cApp
 
+	puts $::wrInfo [mc {Picture optimizing...}]
 	foreach pngfile [scan_dir $cApp(proj) *.png] {
 		optipng $pngfile
 	}
-
+	puts $::wrInfo [mc {Picture optimization finished.}]
 }
 
 plugin {Switch sign} apkPath {
@@ -196,33 +210,65 @@ plugin {Read log} {} {
 proc globFilter {args} {
 	set ret {}
 	foreach path $args {
-		set ret [concat $ret [glob -nocomplain -path $path *]]
+		lappend ret {*}[glob -nocomplain -directory [file dirname $path] [file tail $path]]
 	}
 	return $ret
 }
 
-proc ListAndConfirmDlg {msg args} {
-	set top [toplevel .tlConfirm#[expr int(rand() * 10**9)]]
+proc ListAndConfirmDlg {msg cols items} {
+	set top [toplevel .deleteConfirm[generateID]]
 	wm title $top [mc {Confirm}]
 	
 	set msglbl [ttk::label $top.msg -text $msg]
 	set scroll [ttk::scrollbar $top.scroll -command "$top.list yview"]
-	set listbx [ttk::listbox $top.list -yscroll "$scroll set" -setgrid 1 -height 12]
-	$listbx insert 0 {*}$args
+	set footer [ttk::frame $top.foot]
+	set yes [ttk::button $footer.yes -text [mc {Yes}] -command "[info coroutine] true"]
+	set no  [ttk::button $footer.no  -text [mc {No}] -command [list destroy $top]]
+	set listbx [ttk::treeview $top.list -yscroll "$scroll set" -show headings -column $cols]
+	foreach col $cols {
+		$listbx heading $col -text $col -anchor w
+		$listbx column $col -width [expr [font measure TkDefaultFont $col] + 5]
+	}
+
+	set numCol [llength $cols]
+	set numRow [expr [llength $items] / $numCol]
+	for {set i 0} {$i < $numRow} {incr i} {
+		set row [lrange $items [expr $i * $numCol] [expr ($i + 1) * $numCol - 1]]
+		$listbx insert {} end -values $row
+		foreach col [$listbx cget -columns] item $row {
+			set len [font measure TkDefaultFont "$item  "]
+			if {[$listbx column $col -width] < $len} {
+				$listbx column $col -width $len
+			}
+		}
+	}
 
 	pack $msglbl -side top
+	pack $yes -side left -fill x
+	pack $no -side right -fill x
+	pack $footer -side bottom
 	pack $scroll -side right -fill y
 	pack $listbx -side left -expand 1 -fill both
+	
+	bind $top <Escape> [list destroy $top]
+	bindtags $top onDestroy$top
+	bind onDestroy$top <Destroy> "[info coroutine] false"
+
+	raise $top
+	focus $no
+
+	set ret [yield]
+
+	if [winfo exists $top] {
+		bind onDestroy$top <Destroy> {}
+		destroy $top
+	}
+	return $ret
 }
 
 proc {Clean folder} detail {
-	# TODO: 휴지통으로 버릴 수 있으면 좋음. 차선책은 어떤 파일들이 삭제될 지 알려주는 것.
-#	set reply [tk_dialog .foo [mc Confirm] [mc "You choosed %s.\nis this right? this task is unrecovable." [mc $detail]] \
-		warning 1 [mc Yes] [mc No]]
-#	if {$reply == 1} return
-
 	set target {}
-	if [info exist ::cAppPaths] {
+	if [string match {Delete current*} $detail] {
 		foreach capp $::cAppPaths {
 			getNativePathArray $capp cApp
 			set result [globFilter $cApp(signed) $cApp(unsigned)]
@@ -233,36 +279,46 @@ proc {Clean folder} detail {
 				{Delete current workdir}			{set target [concat $target $proj]}
 				{Delete current except original}	{set target [concat $target $result $proj]}
 				{Delete current all}				{set target [concat $target $result $proj $path]}
-#				{Delete current result}				{lappend target }
-#				{Delete current workdir}			{lappend target								  $cApp(proj)}
-#				{Delete current except original}	{lappend target $cApp(signed) $cApp(unsigned) $cApp(proj)}
-#				{Delete current all}				{lappend target $cApp(signed) $cApp(unsigned) $cApp(proj) $cApp(path)}
 			}
 		}
 	}
 
 	set modDir $::exeDir/modding
 	switch $detail {
-		{Delete all result}				{lappend target {*}[glob -nocomplain -- $modDir/signed_*.apk] {*}[glob -nocomplain -- $modDir/unsigned_*.apk]}
-		{Delete all workdir}			{lappend target {*}[glob -nocomplain == $::exeDir/projects/*}
-		{Delete all except original}	{lappend target {*}[glob -nocomplain -- $modDir/signed_*.apk] {*}[glob -nocomplain -- $modDir/unsigned_*.apk] $::exeDir/projects}
-		{Delete all}					{lappend target {*}[glob -nocomplain -- $modDir/*.apk] $::exeDir/projects}
+		{Delete all result}				{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk]}
+		{Delete all workdir}			{set target [globFilter $::exeDir/projects/*]}
+		{Delete all except original}	{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk $::exeDir/projects/*]}
+		{Delete all}					{set target [globFilter $modDir/*.apk $::exeDir/projects/*]}
 	}
 
-	set count 0
-	foreach item $target {
-		if [file exist $item] {
+	if [llength $target] {
+		foreach item $target {
+			lappend listItem [AdaptPath $item]
 			if [file isdirectory $item] {
-				set suffix [mc (folder)]
+				lappend listItem [mc (folder)]
 			} {
-				set suffix {}
+				lappend listItem {}
 			}
-			puts $::wrInfo "[mc Delete]: [AdaptPath $item] $suffix\n"
-			file delete -force -- $item
-			incr count
 		}
+		set confirm [ListAndConfirmDlg {Are you sure delete?} \
+			[list [mc Path] [mc {Is directory?}]] $listItem]
+		if !$confirm return
+	}
+
+	if [catch {package require twapi_shell}] {
+		set delete {file delete -force --}
+	} {
+		set delete {twapi::recycle_file}
+	}
+	
+	set count 0
+	foreach {path tag} $listItem {
+		puts $::wrInfo "[mc Delete]: $path $tag"
+		{*}$delete $item
+		incr count
 		update idletasks
 	}
+	
 	puts $::wrInfo [mc {%d items are deleted.} $count]
 }
 
@@ -370,6 +426,7 @@ plugin {Dex} {apkPath} {
 
 proc dex2jar {dex jar} {
 	set dex2jar [getVFile dex2jar]
+	puts $::wrInfo [mc {Converting dex to jar...}]
 	Java -cp $dex2jar/* {com.googlecode.dex2jar.tools.Dex2jarCmd} -f -o $jar $dex
 }
 

@@ -5,6 +5,7 @@ namespace eval Session {
 oo::class create Session {
 	
 }
+set cAppPaths {}
 
 proc Session::CommandParser command {
 	set cmd [lindex $command 0]

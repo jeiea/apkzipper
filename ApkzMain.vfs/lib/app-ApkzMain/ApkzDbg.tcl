@@ -19,7 +19,7 @@ proc leavePrefix {cmdstr code result op} {
 	puts [format "cmdstr: %s\n%s: %s\n" \
 			$cmdstr $codename $result]
 }
-#trace add execution Session::getRecentSessionNames leavestep leavePrefix
+#trace add execution ListAndConfirmDlg leavestep leavePrefix
 
 # errorinfo는 번잡하다. 좀 가공해야지. proc 래핑이라 하는건가?
 # Tk에서 text위젯에 더블클릭 버그를 일으켰다. 뭐가 문젠 것 같은데.

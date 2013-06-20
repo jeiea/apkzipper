@@ -225,17 +225,12 @@ proc min {args} {
 	return $ret
 }
 
-proc getChildsRecursive {win} {
-	set ret {}
-	foreach child [winfo children $win] {
-		lappend ret $child
-		set ret [concat $ret [allChildsWidget $child]]
-	}
-	return $ret
+# Not guarantee uniqueness
+proc generateID {} {
+	return [format {_%08X} [expr {int(rand() * 16 ** 8)}]]
 }
 
 proc InputDlg {msg} {
-	set id [string map {. {}} [expr rand()]]
 	set focusing {
 		raise .pul
 		focus .pul.entry
@@ -255,24 +250,27 @@ proc InputDlg {msg} {
 	pack [ttk::combobox .pul.entry -values [lrange $::hist($msg) 1 end]] {*}$packOption
 	.pul.entry insert 0 [lindex $::hist($msg) 0]
 	.pul.entry selection range 0 end
-	foreach widget {.pul .pul.label .pul.entry} {
-		bind $widget <Escape> {
-			destroy .pul
-		}
-	}
-	bind .pul.entry <Return> {
-		set ::dlginputval [.pul.entry get]
-	}
-	
-	bind .pul <Destroy> {
-		set ::dlginputval {}
-	}
+
+	bind .pul.entry <Return> [list [info coroutine] [.pul.entry get]]
+	bind .pul <Escape> {destroy .pul}
+	bindtags .pul INPUTDLG
+	bind INPUTDLG <Destroy> [list [info coroutine]]
 	
 	eval $focusing
-	vwait ::dlginputval
-	
-	set ret $::dlginputval
-	destroy .pul
+	set ret [yield]
+
+	if [winfo exist .pul] {
+		bind INPUTDLG <Destroy> {}
+		destroy .pul
+	}
+	return $ret
+}
+
+proc allwin {{widget .}} {
+	set ret [string repeat { } [regexp -all {\.} $widget]]$widget
+	foreach child [winfo children $widget] {
+		append ret \n[allwin $child]
+	}
 	return $ret
 }
 

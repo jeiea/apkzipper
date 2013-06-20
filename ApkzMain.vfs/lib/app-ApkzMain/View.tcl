@@ -46,11 +46,11 @@ proc View::widget.generate {} {
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
 		pack [ttk::button $path -text "$count. [mc $proc]" \
-			-command "::Session::TraverseCApp {::$proc}"] -padx 3 -expand true -fill both
+			-command "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc}"] -padx 3 -expand true -fill both
 
 		# 두번째 바인딩
 		if {$proc2 != ""} {
-			bind $path $::config(mod2) "::Session::TraverseCApp {::$proc2}"
+			bind $path $::config(mod2) "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc2}"
 			# TODO: 이 Right click을 mod2로 바꿔야겠지?
 			tooltip $path [mc {Right click: %s} [mc $proc2]]
 		}
@@ -227,9 +227,17 @@ proc View::menu.generate {} {
 	$mEtc add cascade -label [mc {Clean folder}] -menu [menu $mEtc.clean -tearoff 0]
 
 	foreach item {
-		{Delete current result} {Delete current workdir} {Delete current except original} {Delete current all} \
-		{Delete all result} {Delete all workdir} {Delete all except original} {Delete all}} {
-		$mEtc.clean add command -label [mc $item] -command "{::Clean folder} [list $item]"
+		{Delete current result}
+		{Delete current workdir}
+		{Delete current except original}
+		{Delete current all}
+		{Delete all result}
+		{Delete all workdir}
+		{Delete all except original}
+		{Delete all}
+	} {
+		$mEtc.clean add command -label [mc $item] -command \
+			"coroutine CleanOp\[generateID\] {::Clean folder} [list $item]"
 	}
 }
 

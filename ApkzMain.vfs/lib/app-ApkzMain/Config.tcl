@@ -7,7 +7,7 @@ set env(PATH) "$exeDir;$env(PATH)"
 array set config {
 	zlevel	9
 	decomTargetOpt	"     "
-	verbose	true
+	verbose false	
 	btns {
 		0	{Import from phone}	{}
 		0	{Select app}		{Select app recent}
@@ -31,6 +31,7 @@ array set config {
 	askExtension {}
 	maxHistory 5
 	autoUpdate true
+	rememberWindowPos true
 }
 
 namespace eval Config {
@@ -89,12 +90,15 @@ proc Config::getConfigFilePath {} {
 proc Config::saveConfig {} {
 	variable fileSignature
 
-	foreach key [array names ::hist] {
-		if {$::hist($key) == {}} {
-			array unset ::hist $key
+	if $::config(enableHistory) {
+		foreach key [array names ::hist] {
+			if {$::hist($key) == {}} {
+				array unset ::hist $key
+			}
 		}
+		dict set data hist [array get ::hist]
 	}
-	dict set data hist [array get ::hist]
+	dict set data config [array get ::config]
 
 	fconfigure [set configfile [open [getConfigFilePath] w]] -encoding utf-8
 	catch {puts $configfile "$fileSignature $::apkzver"} err errinfo
@@ -137,10 +141,6 @@ proc Config::loadConfig {} {
 	}
 	if [dict exists $data hist] {
 		array set ::hist [dict get $data hist]
-	}
-
-	if {$::hist(recentApk) != {}} {
-		{::Session::Select app} [lindex $::hist(recentApk) 0]
 	}
 
 	} trap {POSIX ENOENT} {} {
