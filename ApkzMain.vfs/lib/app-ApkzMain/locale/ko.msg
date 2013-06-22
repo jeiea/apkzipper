@@ -71,11 +71,11 @@ mcset ko {Decompile} {디컴파일}
 mcset ko {Install framework} {프레임워크 설치}
 mcset ko {Explore project} {작업폴더 열기}
 mcset ko {Explore app dir} {앱이있는 폴더 열기}
+mcset ko {Explore dex dir} {오덱스 폴더 열기}
 mcset ko {Optimize png} {PNG 최적화}
 mcset ko {Deodex} {디오덱스}
 mcset ko {Dex} {덱스}
 mcset ko {View java source} {자바소스 보기}
-mcset ko {Explore dex dir} {오덱스 폴더 열기}
 mcset ko {Recompress ogg} {OGG 재압축}
 mcset ko {Zip} {압축}
 mcset ko {Compile} {컴파일}
@@ -170,7 +170,6 @@ mcset ko {Cannot find classes.dex} {classes.dex파일을 찾을 수 없습니다
 mcset ko {Deodexing...} {디오덱스 중...}
 mcset ko {Odexing... } {오덱스 중... }
 mcset ko { Complete.} { 완료.}
-mcset ko {It seems config file not exists. Default applied.} {설정파일이 없습니다. 기본값을 적용합니다.}
 mcset ko {Error opening config file: %s} {설정파일을 여는 중 에러발생: %s}
 mcset ko {Runtime error occured.} {런타임 에러가 발생했습니다.}
 mcset ko {Dexing... } {Dexing... }
@@ -193,3 +192,10 @@ mcset ko {Zipaligning...} {압축 정렬 중...}
 mcset ko {Picture optimizing...} {그림 파일 최적화 중...}
 mcset ko {Picture optimization finished.} {그림 파일 최적화 완료.}
 mcset ko {Converting dex to jar...} {dex를 jar로 변환 중...}
+mcset ko {Are you sure you want to delete these items?} {정말 이 항목들을 지우겠습니까?}
+mcset ko {Maybe these are sent to recycle bin.} {가능하면 휴지통으로 보내집니다.}
+mcset ko {It seems config file not exists. } {설정파일이 없습니다. }
+mcset ko {Default applied.} {기본값을 적용합니다.}
+mcset ko {Choose project directory} {Choose project directory}
+mcset ko {Change to manual mode} {Change to manual mode}
+mcset ko {Pack} {Pack}

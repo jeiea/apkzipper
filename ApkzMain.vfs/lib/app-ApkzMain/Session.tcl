@@ -15,6 +15,11 @@ proc Session::CommandParser command {
 		WinADB::adb pull {*}[lrange $command 1 end]
 		return
 	}
+
+	if {$cmd eq {exit}} {
+		destroy .
+	}
+	
 	if [string is digit $cmd] {
 		TraverseCApp "::[lindex $::config(btns) [expr $cmd * 3 + 1]]"
 	}
@@ -130,6 +135,11 @@ plugin {Select app recent} {} {
 
 	tk_popup .recentPop [winfo pointerx .] [winfo pointery .]
 }
+
+#plugin {Import project} {} {
+#	set initdir [expr [info exist ::config(lastBrowseDir)] ? $::config(lastBrowseDir) : $::exeDir]
+#	set proj [tk_chooseDirectory -initialdir $initdir -mustexist 1 -title [mc {Choose project directory}]]
+#}
 
 proc Session::running_other_task? {} {
 	variable currentOp

@@ -4,10 +4,10 @@
 set vfsRoot [file dirname [file dirname $libpath]]
 set exeDir [file dirname $vfsRoot]
 set env(PATH) "$exeDir;$env(PATH)"
-array set config {
+array set configDefault {
 	zlevel	9
 	decomTargetOpt	"     "
-	verbose false	
+	verbose Debug
 	btns {
 		0	{Import from phone}	{}
 		0	{Select app}		{Select app recent}
@@ -33,6 +33,7 @@ array set config {
 	autoUpdate true
 	rememberWindowPos true
 }
+array set config [array get configDefault]
 
 namespace eval Config {
 	namespace export show addHist saveConfig loadConfig getcfg setcfg
@@ -143,10 +144,41 @@ proc Config::loadConfig {} {
 		array set ::hist [dict get $data hist]
 	}
 
+	applyConfig
 	} trap {POSIX ENOENT} {} {
-		puts $::wrVerbose [mc {It seems config file not exists. Default applied.}]
+		puts $::wrVerbose [mc {It seems config file not exists. }][mc {Default applied.}]
 	} on error {msg info} {
-		puts $::wrVerbose [mc {Error opening config file: %s} $info]
+		puts $::wrVerbose [mc {Error opening config file: %s} $info]\n[mc {Default applied.}]
+	}
+}
+
+# 기본 설정에 따른 초기화 작업
+proc applyConfig {} {
+	set taskMap {
+		::config(autoUpdate) {
+			after 100 {
+				{::Check update} business
+			}
+		}
+		::config(verbose) {
+			::View::textcon.verbose $::config(verbose)
+		}
+		::hist(recentApk) {
+			{::Session::Select app} [lindex $::hist(recentApk) 0]
+		}
+		::hist(mainWinPos) {
+			wm geometry . $::hist(mainWinPos)
+			bind MAINWIN <Configure> {
+				set ::hist(mainWinPos) [wm geometry .]
+			}
+		}
+	}
+	foreach {key task} $taskMap {
+		try {
+			if {[info exist $key]} {
+				eval $task
+			}
+		}
 	}
 }
 

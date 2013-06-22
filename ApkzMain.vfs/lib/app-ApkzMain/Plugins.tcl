@@ -300,7 +300,8 @@ proc {Clean folder} detail {
 				lappend listItem {}
 			}
 		}
-		set confirm [ListAndConfirmDlg {Are you sure delete?} \
+		set confirm [ListAndConfirmDlg [join [mc {Are you sure you want to delete these items?}] \
+			[mc {Maybe these are sent to recycle bin.}]] \
 			[list [mc Path] [mc {Is directory?}]] $listItem]
 		if !$confirm return
 	}

@@ -32,21 +32,6 @@ bind .p.f2.fLog.sb <Control-Shift-3> {
 }
 
 loadConfig
-# 기본 설정에 따른 초기화 작업
-if $config(autoUpdate) {
-	after 100 {
-		{::Check update} business
-	}
-}
-if {$::hist(recentApk) ne {}} {
-	{::Session::Select app} [lindex $::hist(recentApk) 0]
-}
-if {$::hist(mainWinPos) ne {}} {
-	wm geometry . $::hist(mainWinPos)
-	bind MAINWIN <Configure> {
-		set ::hist(mainWinPos) [wm geometry .]
-	}
-}
 
 # 임시파일 제거 등 정리작업
 bind MAINWIN <Destroy> {+

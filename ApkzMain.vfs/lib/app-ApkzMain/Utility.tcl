@@ -251,7 +251,8 @@ proc InputDlg {msg} {
 	.pul.entry insert 0 [lindex $::hist($msg) 0]
 	.pul.entry selection range 0 end
 
-	bind .pul.entry <Return> [list [info coroutine] [.pul.entry get]]
+	# 까탈스러운 곳. []을 치환해주질 않아 eval로 직접.
+	bind .pul.entry <Return> [list eval [info coroutine] {[.pul.entry get]}]
 	bind .pul <Escape> {destroy .pul}
 	bindtags .pul INPUTDLG
 	bind INPUTDLG <Destroy> [list [info coroutine]]
@@ -273,6 +274,15 @@ proc allwin {{widget .}} {
 	}
 	return $ret
 }
+
+# scrollableFrame이 휠 명령을 듣질 않아 직접 바인딩하는 함수.
+# addScrollBindings scrollableFrame bindWin
+proc addScrollBindings {sw win} {
+	bind $win <MouseWheel> \
+		"$sw yview scroll \[expr {- (%D / 120) * 4}\] units"
+	bind $win <4> "$sw yview scroll -5 units"
+	bind $win <5> "$sw yview scroll  5 units"
+};
 
 # 관리코드. dirname하위 모든 tcl파일의 메시지 카탈로그를 생성한다.
 proc mcExtract {dirname existing} {

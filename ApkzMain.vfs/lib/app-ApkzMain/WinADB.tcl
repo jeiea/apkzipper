@@ -45,17 +45,6 @@ proc WinADB::adb_waitfor cmd {
 
 	::twapi::allocate_console
 	::twapi::create_process {} -cmdline $cmdline -title [mc "ADB $cmd"] -detached 0 -inherithandles 1
-#	::twapi::set_console_control_handler {
-#		return 1
-#	}
-#	
-	#		::twapi::set_standard_handle stdin [set dupin [::twapi::duplicate_handle [::twapi::get_standard_handle stdin]]]
-	#		::twapi::set_standard_handle stdout [set dupout [::twapi::duplicate_handle [::twapi::get_standard_handle stdout]]]
-	#		::twapi::set_standard_handle stderr [set duperr [::twapi::duplicate_handle [::twapi::get_standard_handle stderr]]]
-
-	#		set a [::twapi::create_console_screen_buffer]
-	#		::twapi::set_console_active_screen_buffer $a
-	#		::twapi::set_console_screen_buffer_size $hConOut {80 25}
 
 	global hConOut
 	set hConOut [::twapi::get_console_handle stdout]
@@ -137,12 +126,6 @@ proc {WinADB::ADB connect} {} {
 	addHist [mc {Type android net address}] $address
 	puts $::wrInfo [mc {ADB connecting...}]
 	adb connect $address
-	#		TODO: 이런식으로 stdin, stderr, stdout을 지정해야 할 듯
-	#		::twapi::create_process {} -cmdline "cmd /C echo [mc {Connecting...}] & \
-	#			[::getVFile adb.exe] connect $address $config(actionAfterConnect)" \
-	#			-title [mc "ADB Connect"] -newconsole 1 -inherithandles 1
-
-#	eval $::config(actionAfterConnect)
 }
 
 proc {WinADB::Uninstall} apkPath {
