@@ -23,10 +23,15 @@ proc apktool args {
 		}
 		return [string bytelength $data] 
 	}
+	proc apktoolPredErr {chan data} {
+
+	}
 	try {
 		set ::_wrError $::wrError
 		set ::wrError [chan create write [InterChan new $predErrBody]]
 		fconfigure $::wrError -blocking false -buffering none
+#		lassign [chan pipe] r w
+		
 		set returnInfo [Java -jar [getVFile apktool.jar] {*}$args]
 	} finally {
 		close $::wrError
@@ -41,7 +46,7 @@ proc apktool args {
 foreach exefile {fastboot optipng 7za aapt zipalign jd-gui} {
 	eval [format {
 		proc %1$s args {
-			return [bgopen [list puts $::wrDebug] [getVFile %1$s.exe] {*}$args]
+			return [bgopen [getVFile %1$s.exe] {*}$args]
 	}} $exefile]
 }
 
@@ -90,7 +95,7 @@ plugin Compile apkPath {
 	7za x -y -aoa -o$cApp(proj)\\temp $cApp(unsigned)
 
 	# System compile일 경우 별도의 작업
-	if {[info coroutine] eq {compileRoutine}} yield
+	if [regexp {compileRoutine} [info coroutine]] yield
 
 	# 원본사인 강제주입. 실행은 되도 앱 크래시의 요인이 될 수 있다.
 	if [file isdirectory $cApp(proj)/META-INF] {
@@ -104,7 +109,7 @@ plugin Compile apkPath {
 }
 
 plugin {System compile} apkPath {
-	coroutine compileRoutine Compile business $apkPath
+	coroutine compileRoutine ::Compile business $apkPath
 	
 	puts $::wrDebug [mc {Restoring original resource and manifest...}]
 	
@@ -130,7 +135,7 @@ plugin Zip apkPath {
 }
 
 plugin {Install framework} {} {
-	set frameworks [dlgSelectAppFiles [mc {Select framework file or folder}]]
+	set frameworks [dlgSelectAppFiles [mc {Select framework files}]]
 
 	if {$frameworks != ""} {
 		puts $::wrInfo [mc {Framework installing...}]
@@ -142,6 +147,14 @@ plugin {Install framework} {} {
 plugin Sign apkPath {
 	getNativePathArray $apkPath cApp
 
+	if ![file exist $cApp(unsigned)] {
+		puts $::wrError [mc {Unsigned file not found.}]
+		if [file exist $cApp(signed)] {
+			puts $::wrWarning [mc {It seems to be signed already.}]
+		}
+		return
+	}
+	
 	if [signapk -w [getVFile testkey.x509.pem] [getVFile testkey.pk8] $cApp(unsigned) $cApp(signed)] {
 		puts $::wrError [mc {Signing failed: %s} $cApp(name)]
 	} {
@@ -408,6 +421,13 @@ plugin {Deodex} {apkPath} {
 	ensureFiles $odex
 	
 	puts -nonewline $::wrInfo [mc {Deodexing...}]
+	
+	# Query SDK version from original apk
+	if [file exist $cApp(path)] {
+		set manifest [aapt dump badging $cApp(path)]
+		puts $manifest
+	}
+	
 	file delete -force $dexDir $dex
 	set apkDir [file dirname $cApp(path)]
 	baksmali -d $apkDir/framework -d $apkDir -x $odex -o $dexDir
@@ -420,9 +440,9 @@ plugin {Dex} {apkPath} {
 	set dexDir [file rootname $cApp(proj)].odex
 	set dex [file nativename $cApp(proj)/classes.dex]
 	
-	puts $::wrInfo [mc {Dexing... }]
+	puts -nonewline $::wrInfo [mc {Dexing... }]
 	smali $dexDir -o $dex
-	puts $::wrInfo [mc { Complete.}]
+	puts $::wrInfo [mc {Complete.}]
 }
 
 proc dex2jar {dex jar} {

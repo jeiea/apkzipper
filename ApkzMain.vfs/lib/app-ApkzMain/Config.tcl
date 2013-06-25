@@ -32,6 +32,7 @@ array set configDefault {
 	maxHistory 5
 	autoUpdate true
 	rememberWindowPos true
+	viewMode tutorialView
 }
 array set config [array get configDefault]
 
@@ -52,9 +53,11 @@ namespace eval Config {
 }
 
 # 배열이 선언되어 있어야 trace가 먹힘
-array set hist {
+array set histDefault {
 	lastBrowsePath .
+	mainWinPos 640x480
 }
+array set hist [array get histDefault]
 
 # 추가하면 알아서 맨 처음 항목으로 추가되도록 조작한다.
 # 최대 항목 수를 안 넘도록 감독.
@@ -82,10 +85,11 @@ proc Config::addHist {key val} {
 # 실행파일 경로에 설정파일이 있으면, 그 설정파일을 씀.
 proc Config::getConfigFilePath {} {
 	if [file exist $::exeDir/apkz.cfg] {
-		return $::exeDir/apkz.cfg
+		set path $::exeDir/apkz.cfg
 	} {
-		return $::env(appdata)/apkz.cfg 
+		set path $::env(appdata)/apkz.cfg 
 	}
+	return [file normalize $path]
 }
 
 proc Config::saveConfig {} {
@@ -140,15 +144,27 @@ proc Config::loadConfig {} {
 			[mc {Config file of different version was found.}]\n \
 			[mc {If problem occurs, you can use reset function.}]\n]
 	}
+
 	if [dict exists $data hist] {
 		array set ::hist [dict get $data hist]
 	}
+	if [dict exists $data config] {
+		array set ::config [dict get $data config]
+		foreach key [array names configDefault] {
+			if {[array names ::config $key] eq {}} {
+				set ::config($key) $::configDefault($key)
+			}
+		}
+	}
 
-	applyConfig
 	} trap {POSIX ENOENT} {} {
 		puts $::wrVerbose [mc {It seems config file not exists. }][mc {Default applied.}]
 	} on error {msg info} {
 		puts $::wrVerbose [mc {Error opening config file: %s} $info]\n[mc {Default applied.}]
+		array set ::config [array get ::configDefault]
+	} finally {
+#	에러가 있다면 명시적으로 보여야 함.
+		applyConfig
 	}
 }
 
@@ -165,6 +181,9 @@ proc applyConfig {} {
 		}
 		::hist(recentApk) {
 			{::Session::Select app} [lindex $::hist(recentApk) 0]
+		}
+		::config(viewMode) {
+			.mbar entryconf 4 {*}[::View::menuUnderline [mc [::View::switchView $::config(viewMode)]]]
 		}
 		::hist(mainWinPos) {
 			wm geometry . $::hist(mainWinPos)

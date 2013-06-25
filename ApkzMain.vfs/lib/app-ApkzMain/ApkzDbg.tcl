@@ -1,7 +1,6 @@
 # 전부 디버그때만 동작해야 할 부분. 릴리즈땐 없애야 한다.
 # 함수명 검색 잊지 말자.
 console show
-mcExtract $::libpath $::libpath/locale/ko.msg
 
 proc pval {args} {
 	foreach varname $args {
@@ -58,17 +57,63 @@ proc stacktrace {} {
 	set stack "Stack trace:\n"
 	for {set i 1} {$i < [info level]} {incr i} {
 		set lvl [info level -$i]
-#		set pname [lindex $lvl 0]
-		set pname [uplevel $i "namespace which [list [lindex $lvl 0]]"]
-		append stack [string repeat " " $i]$pname
-		foreach value [lrange $lvl 1 end] arg [info args $pname] {
+		set cmd [uplevel $i "namespace which [list [lindex $lvl 0]]"]
+		append stack [string repeat " " $i]$cmd
+	
+		set realArgs [lrange $lvl 1 end]
+		set isCommand [catch {set protoArgs [info args $cmd]}]
+		if $isCommand {
+			append stack " $realArgs"
+			continue
+		}
+		
+		foreach value $realArgs name $protoArgs {
 			if {$value eq ""} {
-				info default $pname $arg value
+				info default $cmd $name value
 			}
-			append stack " $arg='$value'"
+			append stack " $name='$value'"
 		}
 		append stack \n
 	}
 	return $stack
 }
 
+# tooltip같은데서 이미 번역된 메시지를 또 번역시키는 뭣같은 일이 발생.
+# ApkzDbg는 디버그 코드니... 기본 패키지를 바꾸긴 찝찝하고 여기에 예외를 추가시키는 것이 낫겠다.
+proc ::msgcat::mcunknown {locale srcstr args} {
+	if [regexp ::tooltip::show [stacktrace]] {return $srcstr}
+
+	foreach candidate [::msgcat::mcpreferences] {
+		if [file readable $::libpath/locale/$candidate.msg] {
+			set catalog [open $::libpath/locale/$candidate.msg a]
+			fconfigure $catalog -encoding utf-8
+			puts $catalog "mcset $candidate {$srcstr} {$srcstr}"
+			uplevel #0 [list ::msgcat::mcset $candidate $srcstr]
+			puts "new message: $srcstr\n at [stacktrace]"
+			close $catalog
+			break
+		}
+	}
+	
+	return [expr {[llength $args] ? [format $srcstr {*}$args] : $srcstr}]
+}
+
+# 관리코드. mc를 강제 실행시켜 mcunknown에서 constant message를 미리 카탈로그에 등록시킨다.
+# foreach문같은 가변적인 상황에서의 message는 직접 등록해주는 것이 안전하고,
+# 실수로 빠뜨릴 경우를 대비해 mcunknown을 등록시켜 잡도록 했다.
+proc mcExtract {dirname} {
+	foreach relPath [scan_dir $dirname *.tcl] {
+		set srcFile [open $relPath r]
+		set srcText [read $srcFile]
+		close $srcFile
+		
+		# 정규식으로 파서를 만들 순 없다. 어차피 그 정도까지 가면 dynamic으로 간주하고
+		# fail시켜도 상관 없을 것이다.
+		# {\[(mc (\{[^\}]*\}|"[^"]*"|\s*|[^]]*)*)\]} 이건 왜 안 되지
+		foreach {whole phrase arg} [regexp -all -inline \
+			{\[(mc (\{[^\}]*\}|"[^"]*"|\s*|\w*)*)\]} $srcText] {
+				set a [catch [list uplevel #0 $phrase]]
+		}
+	}
+}
+mcExtract $::libpath

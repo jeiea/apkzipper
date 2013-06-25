@@ -1,3 +1,8 @@
+package require Tk
+package require Ttk
+package require BWidget
+package require tkdnd
+
 namespace eval View {
 	namespace export TraverseCApp
 	variable currentOp ""
@@ -7,28 +12,14 @@ namespace eval View {
 	namespace import ::tooltip::tooltip
 }
 
-package require Tk
-package require Ttk
-package require BWidget
-
 proc View::init args {
 	# Create vertical paned view
 	pack [ttk::label .lApp -textvariable ::View::cappLabel] -fill x -side top
 	pack [ttk::panedwindow .p -orient vertical] \
 		-padx 3 -pady 3 -expand 1 -fill both -side bottom
-	.p add [ttk::frame .p.f1 -relief solid]
-	.p add [ttk::labelframe .p.f2 -width 100 -height 100]
 
-	bottomPane.generate .p.f2
-	# 초보자 모드
-	if 1 {
-		simpleView.generate .p.f1
-		simpleView.pack .p.f1
-		#	[winfo parent $pane] sashpos 0 300
-	} {
-		detailView.generate .p.f1
-	}
 	menu.attach
+	switchView $::config(viewMode)
 
 	wm title . [mc {ApkZipper %s %s} $::apkzver $::apkzDistver]
 	bind . <Escape> {destroy .}
@@ -52,19 +43,38 @@ proc View::init args {
 	}
 
 	wm minsize . 450 200
-	wm geometry . 640x480
 }
 
-proc View::bottomPane.generate {pane} {
-	#textcon.generate
-	set underframe [ttk::frame $pane.fLog]
-	pack $underframe -side top -expand 1 -fill both
-	pack [text $underframe.tCmd -yscrollcommand "$underframe.sb set " \
-		-wrap char -width 1 -height 1] -side left -fill both -expand 1
-	pack [ttk::scrollbar $underframe.sb -orient vertical \
-		-command "$underframe.tCmd yview "] -side right -fill both
+proc View::bottomPane.generate {} {
+	set frame .bottomConsole
+	if [winfo exists $frame] {
+		return $frame
+	}
+	
+	ttk::frame $frame
+#	set underframe [ttk::frame $pane.fLog]
+	pack [ttk::entry $frame.ePrompt] -fill x -side bottom
+	bind . <FocusIn> [format {
+		if {[string first "%%W" "%1$s.tCmd"] == -1} {
+			namespace code {focus %1$s.ePrompt}
+		}
+	} $frame]
 
-	variable tCon $underframe.tCmd
+	bind $frame.ePrompt <Return> [format {
+		set cmd [%1$s get]
+		if {$cmd != ""} {
+			%1$s delete 0 end
+			::Session::CommandParser $cmd
+		}
+	} $frame.ePrompt]
+	focus $frame.ePrompt
+	
+	pack [text $frame.tCmd -yscrollcommand "$frame.sb set " \
+		-wrap char -width 1 -height 1] -side left -fill both -expand 1
+	pack [ttk::scrollbar $frame.sb -orient vertical \
+		-command "$frame.tCmd yview "] -side right -fill both
+
+	variable tCon $frame.tCmd
 
 	foreach ideal {"나눔고딕코딩" "맑은 고딕" "Consolas" "돋움체"} {
 		if {[lsearch -exact [font families] $ideal] != -1} {
@@ -80,6 +90,11 @@ proc View::bottomPane.generate {pane} {
 		chan configure $rdLevel -blocking false -buffering none
 		chan configure $wrLevel -blocking false -buffering none
 		chan event $rdLevel readable [namespace code [list tkPuts $rdLevel $level]]
+	}
+
+	proc ::bgerror msg {
+		puts $::wrError $msg
+		puts $::wrVerbose "$::errorCode: $::errorInfo"
 	}
 
 	$tCon tag config Error -foreground red
@@ -120,49 +135,69 @@ proc View::bottomPane.generate {pane} {
 	# 근데 return 이거 빼면 윈키 누를 때 에러뜬다. 이유가 뭐였더라..
 	bind $tCon <<Copy>> return
 	bind $tCon <<SelectAll>> return
-	bind $tCon <KeyPress> {
+	bind $tCon <KeyPress> [format {
 		# Control_L 같은 Modifier는 일단 통과
-		if {[string first _ "%K"] != -1} return
+		if {[string first _ "%%K"] != -1} return
 		# 방향키도 범위선택에 중요하므로 통과
-		if [regexp {Up|Down|Left|Right} "%K"] return
-			focus .p.f2.ePrompt
+		if [regexp {Up|Down|Left|Right} "%%K"] return
+			focus %1$s
 		
-		event generate .p.f2.ePrompt <KeyPress> -keycode %k
-	}
+		event generate %1$s <KeyPress> -keycode %%k
+	} $frame.ePrompt]
 
-	pack [ttk::entry $pane.ePrompt] -fill x -side bottom
-	bind . <FocusIn> {
-		if {[string first "%W" ".p.f2.fLog.tCmd"] == -1} {
-			namespace code {focus .p.f2.ePrompt}
-		}
-	}
-
-	bind $pane.ePrompt <Return> {
-		set cmd [.p.f2.ePrompt get]
-		if {$cmd != ""} {
-			.p.f2.ePrompt delete 0 end
-			::Session::CommandParser $cmd
-		}
-	}
-	focus $pane.ePrompt
+	return $frame
 }
 
-proc View::simpleView.generate {pane} {
-#	set sw [ScrolledWindow $pane.sw -scrollbar horizontal]
-#	pack $sw -fill both -expand true
-#	set sf [ScrollableFrame $sw.sf]
-#	$sw setwidget $sf
-#	 이제 이 uf에다가 집어넣으면 scrollable의 내용을 채울 수 있다.
-#	set uf [$sf getframe]
+plugin {Change to manual mode} {} {
+	.mbar invoke 4
+	rename [info coroutine] {}
+	yield
+}
 
-#	addScrollBindings $sw.sf $pane
+plugin {Pack} {apkPath} {
+	getNativePathArray $apkPath cApp
+	
+	if [file exist $cApp(proj)/apktool.yml] {
+		set fYml [open $cApp(proj)/apktool.yml]
+		set apkInfo [read $fYml]
+		close $fYml
+		if [regexp {com\.android} $apkInfo] {
+			set plugin {::System compile}
+		} {
+			set plugin {::Compile}
+		}
+	} {
+		set plugin {::Zip}
+	}
+	coroutine pack[generateID] $plugin business $apkPath
+}
 
+proc View::simpleView {} {
+	set paneWindow .p
+	foreach pane [$paneWindow panes] {
+		$paneWindow forget $pane
+	}
+	$paneWindow add [simpleView.generate] -weight 1
+	$paneWindow add [bottomPane.generate] -weight 1
+	textcon.verbose Info
+	set ::config(viewMode) simpleView
+}
+
+proc View::simpleView.generate {} {
+	destroy .sw
+	set sw [ScrolledWindow .sw -scrollbar horizontal]
+	set sf [ScrollableFrame $sw.sf -constrainedheight 1]
+	$sw setwidget $sf
+	set frame [$sf getframe]
+
+	# pre-construct button
 	foreach {name label} {
 		bSelLocal	{Select app}
 		bImport		{Import from phone}
 		bManual		{Change to manual mode}
 		bExtract	{Extract}
 		bDecompile	{Decompile}
+		bDeodex		{Deodex}
 		bIFramework {Install framework}
 		bExplProj	{Explore app dir}
 		bExplOdex	{Explore dex dir}
@@ -171,101 +206,103 @@ proc View::simpleView.generate {pane} {
 		bInstall	{Install}
 		bExport		{Export to phone}
 	} {
-		ttk::button $pane.$name -text [mc $label] -command \
-			[list $label business]\;[list ::View::simpleView.pack $pane]
-		puts $pane.$name
+		ttk::button $frame.$name -width 10 -text [mc $label] -command \
+			"coroutine Trav\[generateID\] eval {::Session::TraverseCApp {::$label};::View::simpleView}"
 	}
+
+	lappend listPack bSelLocal bImport bManual
+	
+	if {$::cAppPaths ne {}} {
+		getNativePathArray [lindex $::cAppPaths 0] cApp
+		if [file exist $cApp(path)] {
+			lappend listPack bExtract bDecompile bDeodex
+		}
+		if [file isdirectory $cApp(proj)] {
+			lappend listPack bExplProj bPacking
+		}
+		if [file isdirectory [file rootname $cApp(proj)].dex] {
+			lappend listPack bExplOdex bPacking
+		}
+		if [file exist $cApp(unsigned)]||[file exist $cApp(signed)] {
+			lappend listPack bSigning bInstall bExport
+		}
+		set duplicate [lsearch -all -exact $listPack bPacking]
+		foreach a [lrange $duplicate 0 end-1] {
+			set listPack [lreplace $listPack $duplicate $duplicate]
+		}
+	}
+	
+	bind $sf <Configure> {
+		set numButton [llength [pack slaves [%W getframe]]]
+		%W configure -areawidth [expr {$numButton * [winfo width %W] / 3}]
+	}
+	foreach widget $listPack {
+		pack $frame.$widget -side left -fill both -expand true
+	}
+
+	foreach widget [allwin $frame] {
+		bindtags $widget [concat [bindtags $widget] SCROLLAREA]
+	}
+	bind SCROLLAREA <MouseWheel> [format {
+		lassign [%1$s xview] left right
+		set width [expr {$right - $left}]
+		%1$s xview moveto [expr {$left - (%%D / 120 * $width / 3)}]
+	} $sf]
+	bind SCROLLAREA <4> "$sf xview scroll -5 units"
+	bind SCROLLAREA <5> "$sf xview scroll +5 units"
+	# 왜 딜레이를 줘야 해결되는지 의문. 다른 컴퓨터에서 동작 안할 수 있음.
+	after 200 "$sf xview moveto 1"
+	return $sw
 }
 
-proc View::simpleView.pack {pane} {
-	pack forget {*}[winfo children $pane]
-	set parent [winfo parent $pane]
-	$parent pane [lindex [$parent panes] 0] -weight 1
-	$parent pane [lindex [$parent panes] 1] -weight 1
-
-	proc simplePack {widget} [format {
-		pack %s.$widget -side left -expand true -fill both
-	} $pane]
-
-	if {$::cAppPaths eq {}} {
-		simplePack bSelLocal
-		simplePack bImport
-		simplePack bManual
+proc View::detailView {} {
+	set paneWindow .p
+	foreach pane [$paneWindow panes] {
+		$paneWindow forget $pane
 	}
-	getNativePathArray [lindex $::cAppPaths 0] cApp
-	if [file exist $cApp(path)] {
-		simplePack bExtract
-		simplePack bDecompile
-		simplePack bDeodex
-	}
-	if [file isdirectory $cApp(proj)] {
-		simplePack bExplProj
-		simplePack bPacking
-	}
-	if [file isdirectory [file rootname $cApp(proj)].dex] {
-		simplePack bExplOdex
-		simplePack bPacking
-	}
-	if [file exist $cApp(unsigned)] {
-		simplePack bInstall
-		simplePack bSign
-		simplePack bExport
-	}
-	textcon.verbose Info
+	$paneWindow add [detailView.generate] -weight 0
+	$paneWindow add [bottomPane.generate] -weight 0
+	textcon.verbose Debug
+	set ::config(viewMode) detailView
 }
 
 # 버튼 생성
-proc View::detailView.pack {pane} {
-	set parent [winfo parent $pane]
-	$parent pane [lindex [$parent panes] 0] -weight 0
-	$parent pane [lindex [$parent panes] 1] -weight 0
-
+proc View::detailView.generate {} {
+	set frame .detailView
+	if [winfo exists $frame] {
+		return $frame
+	}
+	
+	ttk::frame $frame
 	set count 0
 	foreach {column proc proc2} $::config(btns) {
-		# 생성과 바인딩
-		incr colStack($column)
-#		set path $parentWin.b$colStack($column)
-#		pack [ttk::button $path -text "$count. [mc $proc]" \
-#			-command "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc}"] -padx 3 -expand true -fill both
-		pack 
-
-		# 두번째 바인딩
-		if {$proc2 != ""} {
-			bind $path $::config(mod2) "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc2}"
-			# TODO: 이 Right click을 mod2로 바꿔야겠지?
-			tooltip $path [mc {Right click: %s} [mc $proc2]]
-		}
-		incr count
-	}
-	unset colStack parentWin path count
-
-	foreach fram [winfo children $pane] {
-		grid rowconfigure $fram [seq [llength [winfo children $fram]]] -weight 1
-	}
-}
-
-proc View::detailView.generate {pane} {
-	foreach {column proc proc2} $::config(btns) {
 		# 부모 프레임 등록
-		set parentWin $pane.c$column
+		set parentWin $frame.c$column
 		if ![winfo exists $parentWin] {
-			ttk::frame $parentWin
+			pack [ttk::frame $parentWin] -side left -expand true -fill both
 		}
 
 		# 생성과 바인딩
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
-		ttk::button $path -text "$count. [mc $proc]" \
-			-command "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc}"]
+		pack [ttk::button $path -text "$count. [mc $proc]" \
+			-command "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc}"] -padx 3 -expand true -fill both
 
 		# 두번째 바인딩
 		if {$proc2 != ""} {
 			bind $path $::config(mod2) "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc2}"
-			# TODO: 이 Right click을 mod2로 바꿔야겠지?
+			# tooltip이 msgcat을 자동으로 해 주는 걸 뭐라는 건 아닌데, 이왕 해 줄거면
+			# mc additional arg까지 다 받아주면 좀 좋나?
 			tooltip $path [mc {Right click: %s} [mc $proc2]]
 		}
 		incr count
 	}
+
+	foreach col [winfo children $frame] {
+		grid rowconfigure $col [seq [llength [winfo children $col]]] -weight 1
+	}
+	
+	return $frame
 }
 
 proc View::textcon.verbose {level} {
@@ -278,11 +315,120 @@ proc View::textcon.verbose {level} {
 	variable tCon
 	set overlevel false
 	foreach tag $levels {
+		$tCon tag config $tag -elide [expr ($overlevel) ? true : false]
 		if {$level eq $tag} {
 			set overlevel true
 		}
-		$tCon tag config $tag -elide [expr ($overlevel) ? true : false]
 	}
+}
+
+proc View::tutorialView {} {
+	set paneWindow .p
+	foreach pane [$paneWindow panes] {
+		$paneWindow forget $pane
+	}
+	$paneWindow add [tutorialView.generate] -weight 3
+	$paneWindow add [bottomPane.generate] -weight 7
+	textcon.verbose Debug
+	set ::config(viewMode) tutorialView
+}
+
+proc View::tutorialView.generate {} {
+	set frame .tutorialView
+	
+	if [winfo exists $frame] {
+		return $frame
+	}
+	ttk::frame $frame -width 200 -height 25
+	
+	foreach {name label} {
+		app {Import}
+		job {Modify and pack}
+		pack {Export}
+	} {
+		ttk::labelframe $frame.$name -text [mc $label]
+	}
+	set fDeo [ttk::frame $frame.fDeodex]
+	
+	foreach {name label description} {
+		bSelLocal	{Select app}		"Select .apk, .jar file from a local disk."
+		bImport		{Import from phone}	"Import file from connected device."
+		bExtract	{Extract}			"Extract selected files' contents.\nIt's enough to modify .png images."
+		bDecompile	{Decompile}			"Unpack selected files' contents with decoding some source code to smali.\nRight click is 'Install framework' which registers\nrequired files for compile/decompile."
+		bDeodex		{Deodex}			"Decode the .odex file.\nIt should be on same location."
+		bOptipng	{Optimize png}		"Reduce .png files' size.\nThere's not quality decrease."
+		bIFramework {Install framework} "Register files required to compile/decompile."
+		bExplProj	{Explore project}	"Open extracted contents' directory"
+		bExplOdex	{Explore dex dir}	"Open .odex contents' directory"
+		bDex		{Dex}				"Pack deodexed contents.\nIf you do it before zip/compile, changes will be applied."
+		bZip		{Zip}				"Pack 'Extracted' contents.\nDon't use it with 'Decompile'"
+		bCompile	{Compile}			"Pack decompiled contents.\nDon't use it with 'Extract'\nRight click is 'System compile' which preserve resource.arsc"
+		bSigning	{Sign}				"Sign packed .apk/.jar file.\nOriginal sign will be remained after packing."
+		bZipalign	{Zipalign}			"Refine packed .apk/jar file.\nIf you sign after zipalign, alignment may be ruined."
+		bInstall	{Install}			"Install .apk file to a device.\nSystem app maybe cannot."
+		bExport		{Export to phone}	"Send file to a device."
+	} {
+		ttk::button $frame.$name -width 10 -text [mc $label] -command \
+			"coroutine Trav\[generateID\] ::Session::TraverseCApp {::$label}"
+		tooltip $frame.$name [mc $description]
+	}
+	bind $frame.bCompile <ButtonRelease-3> {
+		coroutine Trav[generateID] ::Session::TraverseCApp {::System compile}
+	}
+	bind $frame.bDecompile <ButtonRelease-3> {
+		coroutine Trav[generateID] ::Session::TraverseCApp {::Install framework}
+	}
+	
+	set fApp $frame.app
+	pack $frame.bSelLocal -expand true -fill both -in $fApp
+	pack $frame.bImport -expand true -fill both -in $fApp
+	place $fApp -relx 0 -relwidth 0.2 -relheight 1
+	
+	set fPack $frame.pack
+	foreach win {bSigning bZipalign bInstall bExport} {
+		pack $frame.$win -expand true -fill both -in $fPack
+	}
+	place $fPack -relx 0.8 -relwidth 0.2 -relheight 1
+	
+	set fJob $frame.job
+	foreach {row col win} {
+		0 0 bExtract
+		1 0 bDecompile
+		0 1 bExplProj
+		1 1 bOptipng
+		0 2 bZip
+		1 2 bCompile
+	} {
+		grid $frame.$win -row $row -column $col -sticky news -in $fJob
+		grid columnconfigure $fJob $col -weight 1
+		grid rowconfigure $fJob $row -weight 1
+	}
+	place $fJob -relx 0.2 -relwidth 0.6 -relheight 0.7
+	
+	pack $frame.bDeodex -side left -fill both -expand true -in $fDeo
+	pack $frame.bExplOdex -side left -fill both -expand true -in $fDeo
+	pack $frame.bDex -side left -fill both -expand true -in $fDeo
+	place $fDeo -relx 0.2 -rely 0.75 -relwidth 0.6 -relheight 0.25
+	return $frame
+}
+
+# 다음에 바뀔 뷰를 리턴함
+proc View::switchView {args} {
+	set chain {simpleView detailView tutorialView simpleView detailView}
+	if [llength $args] {
+		set idx [lsearch -exact $chain [lindex $args 0]]
+	} {
+		set idx [expr [lsearch -exact $chain $::config(viewMode)]+1]
+	}
+	{*}[lindex $chain $idx]
+	return [lindex $chain $idx+1]
+	#	[winfo parent $pane] sashpos 0 300
+}
+
+proc View::menuUnderline {label} {
+	set markRemoved  [string map {& {}} $label]
+	set underlineIdx [string first & $label]
+	return [list -label $markRemoved -underline $underlineIdx]
 }
 
 proc View::menu.attach {} {
@@ -296,13 +442,13 @@ proc View::menu.attach {} {
 		{Zip level}						[menu $mConfig.zlevel -tearoff 0] \
 		{Decompile target}				[menu $mConfig.target -tearoff 0] \
 	] {
-		set markRemoved [string map {& {}} [mc $label]]
-		[winfo parent $menu] add cascade -label $markRemoved \
-			-menu $menu -underline [string first & [mc $label]]
+		[winfo parent $menu] add cascade {*}[menuUnderline [mc $label]] -menu $menu
 	}
 	# view change menu
-#	set markRemoved [string map {& {}} [mc $label]]
-#	.mbar add command -label [mc {}] 
+	set label [expr {$::config(viewMode) eq {simpleView} ? {detailView} : {simpleView}}]
+	.mbar add command {*}[menuUnderline [mc $label]] \
+		-command {.mbar entryconf 4 {*}[::View::menuUnderline [mc [::View::switchView]]]}
+
 
 	foreach idx [seq 10] {$mConfig.zlevel add radiobutton \
 			-label [mc "Ziplevel $idx"] -value $idx -variable ::config(zlevel)}
@@ -315,11 +461,19 @@ proc View::menu.attach {} {
 		$mConfig.target add radiobutton -label [mc $label] \
 			-variable ::config(decomTargetOpt) -value $opt
 	}
-
+	$mConfig add command {*}[menuUnderline [mc {&Reset config}]] -command {
+		array unset ::config
+		array set ::config [array get ::configDefault]
+		array unset ::hist
+		array set ::hist [array get ::histDefault]
+		{::Select app} business {}
+		puts $::wrInfo [mc {Configuration is set to default.}]
+	}
+	
 	$mSdk add command -label [mc {ADB Shell}] -command {
-			# Eclipse 환경에서 개발할 때는 Eclipse 콘솔로 출력이 나갈 수 있으니 유의하자
-			::WinADB::adb_waitfor Shell
-		}
+		# Eclipse 환경에서 개발할 때는 Eclipse 콘솔로 출력이 나갈 수 있으니 유의하자
+		::WinADB::adb_waitfor Shell
+	}
 	$mSdk add checkbutton -label [mc {Take phone log}] -variable bLogcat \
 		-onvalue 1 -offvalue 0 -command {{::WinADB::ADB logcat} $bLogcat}
 	foreach {label cmd} {

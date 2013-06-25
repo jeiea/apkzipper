@@ -14,32 +14,48 @@ proc scan_dir {dirname pattern} {
 
 if {$tcl_platform(platform) == {windows}} {
 	proc bgopen_receive {callback chan} {
-		append ::bgData($chan) [set data [chan read $chan]]
-		{*}$callback $data
+		puts $callback [read $chan]
 	}
 	
 	proc bgopen_cleanup {callback chan} {
 		bgopen_receive $callback $chan
 		chan configure $chan -blocking true
 		chan close $chan
-		set output $::bgData($chan)
-		unset ::bgData($chan)
-		return $output
 	}
 	
-	proc bgopen {callback args} {
-		lassign [chan pipe] outr outw
-		lassign [chan pipe] errr errw
-		chan configure $outw -blocking false -buffering line
-		chan configure $errw -blocking false -buffering line
-		chan configure $outr -blocking false -buffering none
-		chan configure $errr -blocking false -buffering none
-		set pid [eval exec $args >@ $outw 2>@ $errw &]
-		
-		set handleOut [list bgopen_receive [list puts -nonewline $::wrDebug] $outr]
-		set handleErr [list bgopen_receive [list puts -nonewline $::wrError] $errr]
-		chan event $outr readable $handleOut
-		chan event $errr readable $handleErr
+	proc bgopen {args} {
+		set w(out) $::wrDebug
+		set w(err) $::wrError
+		set condErr {}
+
+		set cmdline $args
+		set opTable {-chan -outchan -errchan -conderror --}
+		foreach {opt val} $args {
+			if [catch {set opt [::tcl::prefix match $opTable $opt]}] break
+			switch $opt {
+			-chan { set w(out) $val
+					set w(err) $val }
+			-outchan { set w(out) $val }
+			-errchan { set w(err) $val }
+			-conderror { set condErr $val }
+			-- {
+				set cmdline [lrange $cmdline 1 end]
+				break
+			}}
+			set cmdline [lrange $cmdline 2 end]
+		}
+		foreach ch {out err} {
+#			refchan doesn't have OS handle, so mediate channel required.
+			if ![string match file* $w($ch)] {
+				set dest $w($ch)
+				lassign [chan pipe] r($ch) w($ch)
+				chan configure $r($ch) -blocking false -buffering line
+				chan configure $w($ch) -blocking false -buffering line
+				chan event $r($ch) readable [list bgopen_receive $dest $r($ch)]
+			}
+		}
+
+		set pid [eval exec $cmdline >@ $w(out) 2>@ $w(err) &]
 		
 		set hProc [twapi::get_process_handle $pid -access generic_all]
 		set bgAlive($pid) 0
@@ -52,16 +68,19 @@ if {$tcl_platform(platform) == {windows}} {
 		}
 		unset ::bgAlive($pid)
 		
-		chan close $outw
-		chan close $errw
-		set stdoutData [bgopen_cleanup $callback $outr]
-		set stderrData [bgopen_cleanup $callback $errr]
+		if [info exists r(out)] {
+			chan close $w(out)
+			bgopen_cleanup $dest $r(out)
+		}
+		if [info exists r(err)] {
+			chan close $w(err)
+			bgopen_cleanup $dest $r(err)
+		}
 		
-		set ret [concat $stdoutData $stderrData]
-		if {$exitcode != 0} {
+		if $exitcode$condErr {
 			error [mc {Runtime error occured.}] $args bgopenError
 		}
-		return $ret
+		return $exitcode
 	}
 	
 	bind . <Destroy> {+
@@ -258,6 +277,8 @@ proc InputDlg {msg} {
 	bind INPUTDLG <Destroy> [list [info coroutine]]
 	
 	eval $focusing
+	puts [info coroutine]
+	puts [info coroutine]
 	set ret [yield]
 
 	if [winfo exist .pul] {
@@ -274,56 +295,3 @@ proc allwin {{widget .}} {
 	}
 	return $ret
 }
-
-# scrollableFrame이 휠 명령을 듣질 않아 직접 바인딩하는 함수.
-# addScrollBindings scrollableFrame bindWin
-proc addScrollBindings {sw win} {
-	bind $win <MouseWheel> \
-		"$sw yview scroll \[expr {- (%D / 120) * 4}\] units"
-	bind $win <4> "$sw yview scroll -5 units"
-	bind $win <5> "$sw yview scroll  5 units"
-};
-
-# 관리코드. dirname하위 모든 tcl파일의 메시지 카탈로그를 생성한다.
-proc mcExtract {dirname existing} {
-	lappend already {}
-	
-	if {$existing != {}} {
-		set catalog [open $existing r]
-		fconfigure $catalog -encoding utf-8
-		while {![eof $catalog]} {
-			set line [gets $catalog]
-			if {[lindex $line 0] == {mcset}} {
-				set locale [lindex $line 1]
-				lappend already [lindex $line 2]
-			}
-		}
-		close $catalog
-	} else {
-		set existing [file dirname $dirname]/catalog.msg
-	}
-	set catalog [open $existing a]
-	fconfigure $catalog -encoding utf-8
-	
-	foreach relPath [scan_dir $dirname *.tcl] {
-		set srcFile [open $relPath r]
-		set srcText [read $srcFile]
-		close $srcFile
-		
-		# 이 정규식 만드는데 좀 어려웠음... 게다가 만들었음에도 결함가능성이 보임.
-		# 더 좋은 방법이 없을까.
-		foreach {whole quote} [regexp -all -inline {\[mc (\{[^\}]*\}|"[^"]*"|[^]]*)} $srcText] {
-			set focus [lindex $quote 0]
-			if [string equal $focus $quote] {
-				set quote \{$quote\}
-			}
-			if {[lsearch -exact $already $focus] == -1} {
-				lappend already $focus
-				puts $catalog "mcset $locale {$focus} {$focus}"
-			}
-		}
-	}
-	set ::already $already
-	close $catalog
-}
-

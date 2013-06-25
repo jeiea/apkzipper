@@ -13,5 +13,5 @@ plugin Sox args {
 	getVFile zlib1.dll
 	getVFile pthreadgc2.dll
 
-	bgopen [list puts $::wrDebug] [getVFile sox.exe] {*}$args
+	bgopen [getVFile sox.exe] {*}$args
 }

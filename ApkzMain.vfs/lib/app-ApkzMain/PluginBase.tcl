@@ -13,7 +13,7 @@ proc Java args {
 	}
 
 	# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
-	bgopen [list puts $::wrDebug] $javapath {*}$args
+	bgopen -chan $::wrDebug $javapath {*}$args
 	return 0
 }
 

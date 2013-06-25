@@ -1,21 +1,20 @@
-package provide app-ApkzMain 2.2
+package provide app-ApkzMain 2.3
 
 set libpath [file dirname [info script]]
 lappend auto_path [file dirname $libpath]
 tk appname ApkZipper2
 
-package require Tcl
-package require twapi
-package require tkdnd
-package require tooltip
-package require msgcat
-package require http
+package require Tcl 8.6
 package require TclOO
 package require Thread
+package require http
+package require msgcat
+package require twapi
+package require tooltip
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
-bindtags . MAINWIN
+bindtags . [concat [bindtags .] MAINWIN]
 
 source $libpath/PluginBase.tcl
 source $libpath/Plugins.tcl
@@ -27,12 +26,13 @@ source $libpath/Session.tcl
 if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 	source $libpath/ApkzDbg.tcl
 }
-bind .p.f2.fLog.sb <Control-Shift-3> {
-	catch {console show}
-}
 
+::View::init
 loadConfig
 
+bind .bottomConsole.sb <Control-Shift-3> {
+	catch {console show}
+}
 # 임시파일 제거 등 정리작업
 bind MAINWIN <Destroy> {+
 	catch {

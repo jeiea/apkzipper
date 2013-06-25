@@ -1,3 +1,8 @@
+# http 검사 코드
+package require http
+set token [http::geturl http://db.tt/v7qgMqqN]
+set data [http::data $token]
+
 namespace eval rchan {
 
 		variable chan        ;# set of known channels

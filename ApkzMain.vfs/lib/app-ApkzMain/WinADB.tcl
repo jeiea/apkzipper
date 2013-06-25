@@ -10,7 +10,11 @@ namespace eval WinADB {
 proc WinADB::adb args {
 	getVFile AdbWinApi.dll
 	getVFile AdbWinUsbApi.dll
-	set adbout [bgopen [list puts $::wrDebug] [getVFile adb.exe] {*}$args]
+	set processNames [lmap pid [twapi::get_process_ids] {twapi::get_process_name $pid}]
+	if [expr {{adb.exe} ni $processNames}] {
+		puts $::wrInfo [mc {Initializing ADB...}]
+	}
+	set adbout [bgopen [getVFile adb.exe] {*}$args]
 
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
 	# 저 adbErrMap을 쓰면 될 듯

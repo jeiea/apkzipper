@@ -7,21 +7,40 @@ oo::class create Session {
 }
 set cAppPaths {}
 
-proc Session::CommandParser command {
-	set cmd [lindex $command 0]
+proc Session::CommandParser line {
+	set cmd [string tolower [lindex $line 0]]
+	set line [regsub -all {"([^"]*)"} $line {{\1}}]
+	
 	# HACK: 나중에 VFS처럼 만들어야... 이것도 좋지만 좀 더 깔끔하게
 	if {$cmd == 0} {
-		puts $::wrDebug "adb [lrange $command 1 end]"
-		WinADB::adb pull {*}[lrange $command 1 end]
+		puts $::wrDebug "adb [lrange $line 1 end]"
+		WinADB::adb pull {*}[lrange $line 1 end]
 		return
 	}
 
-	if {$cmd eq {exit}} {
-		destroy .
-	}
-	
-	if [string is digit $cmd] {
-		TraverseCApp "::[lindex $::config(btns) [expr $cmd * 3 + 1]]"
+	switch $cmd {
+		exit {
+			destroy .
+		}
+		push {
+			switch [llength $line] {
+				1 {coroutine Command[generateID] TraverseCApp {::Export to phone}}
+				2 {coroutine Command[generateID] TraverseCApp {::Export to phone} [lindex $line 1]; puts $line}
+				3 {coroutine Command[generateID] WinADB::adb push [lindex $line 1] [lindex $line 2]}
+			}
+		}
+		pull {
+			switch [llength $line] {
+				1 {coroutine Command[generateID] TraverseCApp {::Import from phone}}
+				2 {coroutine Command[generateID] TraverseCApp {::Import from phone} [lindex $line 1]}
+				3 {coroutine Command[generateID] WinADB::adb pull [lindex $line 1] [lindex $line 2]}
+			}
+		}
+		default {
+			if [string is digit $cmd] {
+				coroutine Command[generateID] TraverseCApp "::[lindex $::config(btns) [expr $cmd * 3 + 1]]"
+			}
+		}
 	}
 }
 
@@ -128,7 +147,7 @@ plugin {Select app recent} {} {
 	destroy .recentPop
 	set m [menu .recentPop -tearoff 0]
 
-	lmap label [Session::getRecentSessionNames] apkList $::hist(recentApk) {
+	foreach label [Session::getRecentSessionNames] apkList $::hist(recentApk) {
 		$m add command -label $label \
 			-command [namespace code [list {Session::Select app} $apkList]]
 	}
@@ -158,14 +177,14 @@ proc Session::running_other_task? {} {
 	}
 }
 
-proc Session::TraverseCApp pluginName {
+proc Session::TraverseCApp {pluginName args} {
 	global cAppPaths
 	variable currentOp
 
 	if [running_other_task?] return
 
 	if ![string match "apkPath*" [lindex [info object definition $pluginName business] 0]] {
-		$pluginName business
+		$pluginName business {*}$args
 		return
 	}
 
@@ -173,7 +192,7 @@ proc Session::TraverseCApp pluginName {
 	if [info exist cAppPaths] {
 		foreach apkPath $cAppPaths {
 			try {
-				$pluginName business $apkPath
+				$pluginName business $apkPath {*}$args
 			} trap {CUSTOM ERR} {msg info} {
 				puts $::wrError "$msg: $info\n"
 			} trap bgopenError {msg info} {
@@ -193,5 +212,3 @@ proc Session::TraverseCApp pluginName {
 	}
 	set currentOp {}
 }
-
-::View::init

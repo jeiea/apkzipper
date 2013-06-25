@@ -107,12 +107,12 @@ mcset ko {Abort} {취소}
 mcset ko {Retry with conserving data} {데이터를 보존하면서 재설치}
 mcset ko {Retry with removing data} {데이터를 삭제하면서 재설치}
 mcset ko {Waiting for device... Aborting is Ctrl+C} {휴대폰 연결을 기다리는 중... 취소하려면 Ctrl+C를 눌러주세요}
-mcset ko {Please extract/decompile app first.} {먼저 앱을 압축해제/디컴파일 해주세요.}
+mcset ko {Please extract/decompile app first.} {먼저 앱을 압축풀기/디컴파일 해주세요.}
 mcset ko {jar compiling...} {jar 컴파일 중...}
 mcset ko {apk compiling...} {apk 컴파일 중...}
 mcset ko {Compile failed. Task terminated.} {컴파일하는데 실패했습니다.}
 mcset ko {Adjusting compressing level...} {압축세기에 맞게 재압축 하는 중...}
-mcset ko {Select framework file or folder} {프레임워크가 있는 폴더를 선택해주세요}
+mcset ko {Select framework files} {프레임워크 파일들을 선택해주세요}
 mcset ko {Signing failed} {사인에 실패했습니다}
 mcset ko Signed {사인되었습니다}
 mcset ko {Zipaligned} {압축정렬 되었습니다}
@@ -164,6 +164,7 @@ mcset ko {$proc2} {}
 mcset ko {ADB $cmd} {}
 mcset ko {$detail} {}
 mcset ko "(\{\[^\}" {}
+mcset ko {[::View::switchView} {[::View::switchView}
 mcset ko {File is required: %s} {파일이 필요합니다: %s}
 mcset ko {Access denied: %s} {접근 거부됨: %s}
 mcset ko {Cannot find classes.dex} {classes.dex파일을 찾을 수 없습니다}
@@ -172,7 +173,7 @@ mcset ko {Odexing... } {오덱스 중... }
 mcset ko { Complete.} { 완료.}
 mcset ko {Error opening config file: %s} {설정파일을 여는 중 에러발생: %s}
 mcset ko {Runtime error occured.} {런타임 에러가 발생했습니다.}
-mcset ko {Dexing... } {Dexing... }
+mcset ko {Dexing... } {classes.dex 묶는 중... }
 mcset ko {Path} {Path}
 mcset ko {Is directory?} {폴더여부}
 mcset ko {Extracting...} {압축 푸는 중...}
@@ -196,6 +197,76 @@ mcset ko {Are you sure you want to delete these items?} {정말 이 항목들을
 mcset ko {Maybe these are sent to recycle bin.} {가능하면 휴지통으로 보내집니다.}
 mcset ko {It seems config file not exists. } {설정파일이 없습니다. }
 mcset ko {Default applied.} {기본값을 적용합니다.}
-mcset ko {Choose project directory} {Choose project directory}
-mcset ko {Change to manual mode} {Change to manual mode}
-mcset ko {Pack} {Pack}
+mcset ko {Choose project directory} {불러올 작업폴더를 선택해주세요}
+mcset ko {Change to manual mode} {수동 모드로 전환}
+mcset ko {Pack} {앱파일 만들기}
+mcset ko {detailView} {수동모드로 전환(&M)}
+mcset ko {simpleView} {간단모드로 전환(&M)}
+mcset ko {Complete.} {완료.}
+mcset ko {Import} {불러오기}
+mcset ko {Modify and pack} {수정하고 싸매기}
+mcset ko {Export} {마무리작업}
+mcset ko {Select .apk, .jar file from a local disk.} {.apk/.jar파일을 불러옵니다.}
+mcset ko {Import file from connected device.} {폰에서 파일을 가져옵니다.}
+mcset ko {Extract selected files' contents.
+It's enough to modify .png images.} {앱을 압축풀기합니다.
+사진 파일만 바꿀 때는 이걸로 충분합니다.}
+mcset ko {Unpack selected files' contents with decoding some source code to smali.
+Right click is 'Install framework' which registers
+required files for compile/decompile.} {선택한 앱의 .xml을 추출하고 일부 소스코드를 smali형식으로 변환합니다.
+
+우클릭하면 컴파일/디컴파일에 필요한 파일을 등록하는
+프레임워크 설치를 합니다.}
+mcset ko {Decode the .odex file.
+It should be on same location.} {.odex파일을 smali형식으로 분해합니다.
+.odex파일이 선택한 앱과 같은 경로에 같은 이름으로 있어야 합니다.}
+mcset ko {Reduce .png files' size.
+There's not quality decrease.} {사진파일의 크기를 줄입니다.
+화질저하는 없습니다.}
+mcset ko {Register files required to compile/decompile.} {컴파일/디컴파일에 필요한 파일을 등록합니다.}
+mcset ko {Open extracted contents' directory} {분해한 내용물이 있는 폴더를 엽니다}
+mcset ko {Open .odex contents' directory} {.odex파일을 분해한 폴더를 엽니다}
+mcset ko {Pack deodexed contents.
+If you do it before zip/compile, changes will be applied.} {분해한 .odex를 조립합니다.
+이걸하고 압축/컴파일하면 수정한 내용이 반영됩니다.}
+mcset ko {Pack 'Extracted' contents.
+Don't use it with 'Decompile'} {재압축합니다.
+디컴파일하고서 쓰지 마세요.}
+mcset ko {Pack decompiled contents.
+Don't use it with 'Extract'
+Right click is 'System compile' which preserve resource.arsc} {디컴파일로 분해한 것을 조립합니다.
+압축풀기하고서 쓰지 마세요.
+
+우클릭하면 resource.arsc를 수정하지 않는 시스템컴파일을 합니다.
+SystemUI.apk같은 시스템 앱들을 컴파일할 때 상단바 사라짐 등을 방지합니다.}
+mcset ko {Sign packed .apk/.jar file.
+Original sign will be remained after packing.} {조립한 .apk/.jar파일에 서명합니다.
+압축/컴파일 한 후엔 원래의 서명이 남아있는 상태입니다.
+하지만 수정사항 때문에 원본과 달라져 서명이 무효화되었을 수 있습니다.
+이 경우 앱이 동작하다가 맛이 가거나 합니다.
+시스템 앱에는 서명이 필요 없습니다.}
+mcset ko {Refine packed .apk/jar file.
+If you sign after zipalign, alignment may be ruined.} {조립한 파일을 다듬습니다.
+사인을 할 거면 사인한 후에 이걸 하세요. 맨 마지막 수정작업이라고 생각하면 됩니다.
+안 해도 에러가 뜨지는 않지만 최적화의 효과가 있습니다.}
+mcset ko {Install .apk file to a device.
+System app maybe cannot.} {조립한 앱을 폰에 설치합니다.
+시스템 앱은 아마 불가능합니다.}
+mcset ko {Send file to a device.} {조립한 앱을 폰에 전송합니다.}
+mcset ko {tutorialView} {튜토리얼모드로 전환(&M)}
+mcset ko {Initializing ADB...} {ADB 시동 중...}
+mcset ko {Save To Log} {에러메시지 저장}
+mcset ko {OK} {확인}
+mcset ko {Application Error} {프로그램 에러}
+mcset ko {Error: %1$s} {에러: %1$s}
+mcset ko {Skip Messages} {무시}
+mcset ko {Details >>} {세부 사항 >>}
+mcset ko {Log Files} {로그 파일}
+mcset ko {Text Files} {텍스트 파일}
+mcset ko {All Files} {모든 파일}
+mcset ko {Select Log File} {로그파일 경로를 선택해주세요}
+mcset ko {&Reset config} {설정 초기화(&R)}
+mcset ko {Configuration is set to default.} {설정이 초기화되었습니다.}
+mcset ko {simpleView is incomplete feature. Avoid to use it.} {간단모드는 미완성 기능입니다. 안 쓰는 게 좋을 거예요.}
+mcset ko {Unsigned file not found.} {사인할 파일이 없습니다.}
+mcset ko {It seems to be signed already.} {이미 사인이 된 것 같습니다.}
