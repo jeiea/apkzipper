@@ -58,6 +58,7 @@ proc WinADB::adb_waitfor cmd {
 	::twapi::set_console_screen_buffer_size $hConOut [list $width $height]
 	set hWnd [::twapi::get_console_window]
 	::twapi::maximize_window $hWnd
+	::twapi::set_console_title "ADB $cmd"
 #	get_window_coordinates HWIN
 	::twapi::free_console
 }
@@ -124,8 +125,10 @@ proc {WinADB::ADB logcat} bLogging {
 	}
 }
 
-proc {WinADB::ADB connect} {} {
-	set address [InputDlg [mc {Type android net address}]]
+proc {WinADB::ADB connect} {{address ""}} {
+	if {$address eq {}} {
+		set address [InputDlg [mc {Type android net address}]]
+	}
 	if [string is space $address] return
 	addHist [mc {Type android net address}] $address
 	puts $::wrInfo [mc {ADB connecting...}]

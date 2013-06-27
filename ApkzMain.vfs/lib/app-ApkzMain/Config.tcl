@@ -164,7 +164,10 @@ proc Config::loadConfig {} {
 		array set ::config [array get ::configDefault]
 	} finally {
 #	에러가 있다면 명시적으로 보여야 함.
-		applyConfig
+		if [catch applyConfig] {
+			array set ::config [array get ::configDefault]
+			applyConfig
+		}
 	}
 }
 

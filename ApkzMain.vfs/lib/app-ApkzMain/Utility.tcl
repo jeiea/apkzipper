@@ -1,5 +1,48 @@
-# 유지보수 코드인 mcExtract가 있다.
-# 나중에 테스트코드가 추가되면 임시로 여기에 넣어도 될 것 같음.
+
+oo::class create InterChan {
+	constructor {body} {
+		oo::objdefine [self] method write {chan data} $body
+	}
+	method initialize {ch mode} {
+		return {initialize finalize watch write}
+	}
+	method finalize {ch} {
+		my destroy
+	}
+	method watch {ch events} {
+		# Must be present but we ignore it because we do not
+		# post any events
+	}
+}
+
+oo::class create CapturingChan {
+	variable var
+	constructor {varnameOrArgs {body ""}} {
+		# Make an alias from the instance variable to the global variable
+		if {[llength $varnameOrArgs] == 2} {
+			oo::objdefine [self] method write $varnameOrArgs $body
+		} {
+			my eval [list upvar \#0 $varnameOrArgs var]
+		}
+	}
+	method initialize {handle mode} {
+		if {$mode ne "write"} {error "can't handle reading"}
+		return {finalize initialize write}
+	}
+	method finalize {handle} {
+		# Do nothing, but mandatory that it exists
+	}
+	method write {handle bytes} {
+		append var $bytes
+		# Return the empty string, as we are swallowing the bytes
+		return {}
+	}
+}
+
+#set myBuffer ""
+#chan push stdout [CapturingChan new myBuffer]
+
+#chan pop stdout
 
 
 # kostix's snippet from tcler bin
@@ -13,16 +56,6 @@ proc scan_dir {dirname pattern} {
 
 
 if {$tcl_platform(platform) == {windows}} {
-	proc bgopen_receive {callback chan} {
-		puts $callback [read $chan]
-	}
-	
-	proc bgopen_cleanup {callback chan} {
-		bgopen_receive $callback $chan
-		chan configure $chan -blocking true
-		chan close $chan
-	}
-	
 	proc bgopen {args} {
 		set w(out) $::wrDebug
 		set w(err) $::wrError
@@ -44,6 +77,7 @@ if {$tcl_platform(platform) == {windows}} {
 			}}
 			set cmdline [lrange $cmdline 2 end]
 		}
+
 		foreach ch {out err} {
 #			refchan doesn't have OS handle, so mediate channel required.
 			if ![string match file* $w($ch)] {
@@ -51,7 +85,7 @@ if {$tcl_platform(platform) == {windows}} {
 				lassign [chan pipe] r($ch) w($ch)
 				chan configure $r($ch) -blocking false -buffering line
 				chan configure $w($ch) -blocking false -buffering line
-				chan event $r($ch) readable [list bgopen_receive $dest $r($ch)]
+				chan event $r($ch) readable "puts -nonewline {$dest} \[read {$r($ch)}\]"
 			}
 		}
 
@@ -59,7 +93,7 @@ if {$tcl_platform(platform) == {windows}} {
 		
 		set hProc [twapi::get_process_handle $pid -access generic_all]
 		set bgAlive($pid) 0
-		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgAlive($pid) 0]\;#
+		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgAlive($pid) 1]\;#
 		vwait ::bgAlive($pid)
 		set exitcode [twapi::get_process_exit_code $hProc]
 		twapi::close_handle $hProc
@@ -68,17 +102,17 @@ if {$tcl_platform(platform) == {windows}} {
 		}
 		unset ::bgAlive($pid)
 		
-		if [info exists r(out)] {
-			chan close $w(out)
-			bgopen_cleanup $dest $r(out)
+		foreach ch {out err} {
+			if [info exists r($ch)] {
+				chan configure $w($ch) -blocking true
+				chan close $w($ch)
+				chan configure $r($ch) -blocking true
+				chan close $r($ch)
+			}
 		}
-		if [info exists r(err)] {
-			chan close $w(err)
-			bgopen_cleanup $dest $r(err)
-		}
-		
+
 		if $exitcode$condErr {
-			error [mc {Runtime error occured.}] $args bgopenError
+			error [mc {Runtime error occured.}] $args [list bgopenError $exitcode]
 		}
 		return $exitcode
 	}
@@ -170,18 +204,6 @@ proc AdaptPath file {file nativename [file normalize $file]}
 
 package require http
 proc httpcopy {url {file ""}} {
-	set url [string map {https:// http://} $url]
-
-	if {{PROCESSOR_ARCHITEW6432} in [array names ::env] && \
-		$::env(PROCESSOR_ARCHITEW6432) eq {AMD64}} {
-		set edition WOW64
-	} {
-		set edition {}
-	}
-	set    useragent {Mozilla/5.0 (compatible; MSIE 10.0; }
-	append useragent "$::tcl_platform(os) $::tcl_platform(osVersion); $edition)"
-	::http::config -useragent $useragent
-
 	set token [::http::geturl $url -progress httpCopyProgress]
 
 	#전역범위의 '배열'이라서 upvar처리를 해야한다.
@@ -295,3 +317,10 @@ proc allwin {{widget .}} {
 	}
 	return $ret
 }
+
+proc modeless_dialog args {
+	after 10 {tk::SetFocusGrab .}
+	return [tk_dialog {*}$args]
+}
+
+

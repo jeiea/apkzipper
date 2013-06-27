@@ -2,23 +2,24 @@ proc Java args {
 	global javapath
 	if ![info exist javapath] {
 		set javapath [auto_execok java]
-		if {$javapath == ""} {
+		if {$javapath eq {}} {
 			set candidate [glob -nocomplain "$::env(SystemDrive)/Program Files*/java/*/bin/java.exe"]
 			if [llength $candidate] {set javapath [lindex $candidate 0]}
 		}
 	}
 
-	if {$javapath == {}} {
+	if {$javapath eq {}} {
 		error [mc "Java not found.\nTo solve this problem, install JRE or JDK."] {} 100
 	}
 
 	# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
-	bgopen -chan $::wrDebug $javapath {*}$args
+	bgopen $javapath {*}$args
 	return 0
 }
 
-# vfs의 바이너리를 복사해서 경로를 리턴.
-proc getVFile fileName {
+# vfs의 바이너리를 복사해서 경로를 리턴. vfs에 없으면 임시폴더 임시파일 경로를 리턴.
+# 인자가 없으면 임시폴더를 리턴
+proc getVFile args {
 	global virtualTmpDir
 
 	if ![info exist virtualTmpDir] {
@@ -26,12 +27,16 @@ proc getVFile fileName {
 		file delete -force $virtualTmpDir
 		file mkdir $virtualTmpDir
 	}
+	if ![llength $args] {return $virtualTmpDir}
 
-	if ![file exist $virtualTmpDir/$fileName] {
-		file copy -force $::vfsRoot/binaries/$fileName $virtualTmpDir/$fileName
+	set fileName [lindex $args 0]
+	set realFile [file join $virtualTmpDir $fileName]
+	set virtualFile [file join $::vfsRoot binaries $fileName]
+
+	if { ![file exist $realFile] && [file exist $virtualFile] } {
+		file copy -force $virtualFile $realFile 
 	}
-
-	return $virtualTmpDir/$fileName}
+	return $realFile}
 
 proc cleanupVFile {} {
 	if [info exist ::virtualTmpDir] {

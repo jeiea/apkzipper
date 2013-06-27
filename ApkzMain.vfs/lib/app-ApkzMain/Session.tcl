@@ -12,15 +12,32 @@ proc Session::CommandParser line {
 	set line [regsub -all {"([^"]*)"} $line {{\1}}]
 	
 	# HACK: 나중에 VFS처럼 만들어야... 이것도 좋지만 좀 더 깔끔하게
-	if {$cmd == 0} {
-		puts $::wrDebug "adb [lrange $line 1 end]"
+	if {$cmd eq {0}} {
+		puts $::wrDebug "adb pull [lrange $line 1 end]"
 		WinADB::adb pull {*}[lrange $line 1 end]
 		return
 	}
 
+	set table {push pull exit shell connect}
+	catch {set cmd [::tcl::prefix match $table $cmd]}
 	switch $cmd {
 		exit {
 			destroy .
+		}
+		shell {
+			switch [llength $line] {
+				1 {::WinADB::adb_waitfor Shell}
+				2 {
+					puts $::wrInfo "$ [lrange $line 1 end]"
+					::WinADB::adb shell {*}[lrange $line 1 end]
+				}
+			}
+		}
+		connect {
+			switch [llength $line] {
+				1 {coroutine ADBcon[generateID] {::WinADB::ADB connect}}
+				2 {coroutine ADBcon[generateID] {::WinADB::ADB connect} [lindex $line 1]}
+			}
 		}
 		push {
 			switch [llength $line] {

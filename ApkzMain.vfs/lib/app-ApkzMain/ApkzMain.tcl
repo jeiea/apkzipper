@@ -11,6 +11,9 @@ package require http
 package require msgcat
 package require twapi
 package require tooltip
+package require tcl::transform::observe
+package require tls
+package require autoproxy
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
@@ -24,10 +27,12 @@ source $libpath/View.tcl
 source $libpath/WinADB.tcl
 source $libpath/Session.tcl
 if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
-	source $libpath/ApkzDbg.tcl
+	source $::exeDir/InfResrc/ApkzDbg.tcl
 }
 
-::View::init
+autoproxy::init
+http::register https 443 ::autoproxy::tls_socket
+View::init
 loadConfig
 
 bind .bottomConsole.sb <Control-Shift-3> {

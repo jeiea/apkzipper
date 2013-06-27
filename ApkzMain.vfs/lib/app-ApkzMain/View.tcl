@@ -14,7 +14,12 @@ namespace eval View {
 
 proc View::init args {
 	# Create vertical paned view
-	pack [ttk::label .lApp -textvariable ::View::cappLabel] -fill x -side top
+	set stat .stat
+	pack [StatusBar $stat -showresize 0] -fill x
+	$stat add [ttk::label $stat.lApp -textvariable ::View::cappLabel]
+#	$stat add [ttk::progressbar $stat.prog -mode indeterminate]
+#	$stat.prog start 10
+
 	pack [ttk::panedwindow .p -orient vertical] \
 		-padx 3 -pady 3 -expand 1 -fill both -side bottom
 
@@ -24,10 +29,6 @@ proc View::init args {
 	wm title . [mc {ApkZipper %s %s} $::apkzver $::apkzDistver]
 	bind . <Escape> {destroy .}
 	tooltip delay 50
-
-	#bind all <Key-Control_L> {puts "a\n"}
-	#bind all <KeyRelease-Control_L> {puts "b\n"}
-	#bind all <KeyPress> {puts "%%K=%K, %%A=%A, %%k=%k\n"}
 
 	# Drag and Drop 바인딩 부분
 	tkdnd::drop_target register . DND_Files
@@ -53,21 +54,32 @@ proc View::bottomPane.generate {} {
 	
 	ttk::frame $frame
 #	set underframe [ttk::frame $pane.fLog]
-	pack [ttk::entry $frame.ePrompt] -fill x -side bottom
+	pack [set prompt [ttk::combobox $frame.cbPrompt]] -fill x -side bottom
 	bind . <FocusIn> [format {
 		if {[string first "%%W" "%1$s.tCmd"] == -1} {
-			namespace code {focus %1$s.ePrompt}
+			namespace code {focus %1$s}
 		}
-	} $frame]
+	} $prompt]
 
-	bind $frame.ePrompt <Return> [format {
+	bind $prompt <Return> [format {
 		set cmd [%1$s get]
-		if {$cmd != ""} {
+		if ![string is space $cmd] {
+			addHist commandLine $cmd
 			%1$s delete 0 end
 			::Session::CommandParser $cmd
 		}
-	} $frame.ePrompt]
-	focus $frame.ePrompt
+	} $prompt]
+	$prompt config -postcommand [format {%s config -values $::hist(commandLine)} $prompt]
+	tooltip $prompt [join [list \
+		[mc {Supported command:}]\
+		[mc {shell, connect, exit}]\
+		[mc {push [<remote path>]}]\
+		[mc {push <local> <remote>}]\
+		[mc {pull <remote path>}]\
+		[mc {pull <remote> <local>}]\
+		[mc {Numbers written in detail view are accepted.}]\
+	] \n]
+	focus $prompt
 	
 	pack [text $frame.tCmd -yscrollcommand "$frame.sb set " \
 		-wrap char -width 1 -height 1] -side left -fill both -expand 1
@@ -98,9 +110,9 @@ proc View::bottomPane.generate {} {
 	}
 
 	$tCon tag config Error -foreground red
-	$tCon tag config Warning -foreground #ee4400
-	$tCon tag config Verbose -elide 1
-	$tCon tag config Debug -foreground #000040
+	$tCon tag config Warning -foreground orangered
+	$tCon tag config Debug -foreground navy
+	$tCon tag config Verbose -foreground purple -elide 1
 
 	namespace inscope :: [list rename $tCon _$tCon]
 
@@ -138,12 +150,16 @@ proc View::bottomPane.generate {} {
 	bind $tCon <KeyPress> [format {
 		# Control_L 같은 Modifier는 일단 통과
 		if {[string first _ "%%K"] != -1} return
-		# 방향키도 범위선택에 중요하므로 통과
-		if [regexp {Up|Down|Left|Right} "%%K"] return
+		# 방향키도 범위선택에 중요하므로 통과, PgUp, PgDn통과
+		if [regexp {Up|Down|Left|Right|Prior|Next} "%%K"] return
 			focus %1$s
 		
 		event generate %1$s <KeyPress> -keycode %%k
-	} $frame.ePrompt]
+	} $prompt]
+
+	#bind all <Key-Control_L> {puts "a\n"}
+	#bind all <KeyRelease-Control_L> {puts "b\n"}
+#	bind all <KeyPress> {puts "%%K=%K, %%A=%A, %%k=%k\n"}
 
 	return $frame
 }
@@ -220,15 +236,15 @@ proc View::simpleView.generate {} {
 		if [file isdirectory $cApp(proj)] {
 			lappend listPack bExplProj bPacking
 		}
-		if [file isdirectory [file rootname $cApp(proj)].dex] {
+		if [file isdirectory [file rootname $cApp(proj)].odex] {
 			lappend listPack bExplOdex bPacking
 		}
 		if [file exist $cApp(unsigned)]||[file exist $cApp(signed)] {
 			lappend listPack bSigning bInstall bExport
 		}
 		set duplicate [lsearch -all -exact $listPack bPacking]
-		foreach a [lrange $duplicate 0 end-1] {
-			set listPack [lreplace $listPack $duplicate $duplicate]
+		foreach other [lrange $duplicate 0 end-1] {
+			set listPack [lreplace $listPack $other $other]
 		}
 	}
 	
@@ -471,7 +487,7 @@ proc View::menu.attach {} {
 	}
 	
 	$mSdk add command -label [mc {ADB Shell}] -command {
-		# Eclipse 환경에서 개발할 때는 Eclipse 콘솔로 출력이 나갈 수 있으니 유의하자
+		# 일부러 title case한 이유는 콘솔 창 이름으로 쓰이기 때문
 		::WinADB::adb_waitfor Shell
 	}
 	$mSdk add checkbutton -label [mc {Take phone log}] -variable bLogcat \
@@ -510,49 +526,6 @@ proc View::menu.attach {} {
 		$mEtc.clean add command -label [mc $item] -command \
 			"coroutine CleanOp\[generateID\] {::Clean folder} [list $item]"
 	}
+	
+	$mEtc add command -label [mc {Bug report}] -command ::bugReport
 }
-
-oo::class create InterChan {
-	constructor {body} {
-		oo::objdefine [self] method write {chan data} $body
-	}
-	method initialize {ch mode} {
-		return {initialize finalize watch write}
-	}
-	method finalize {ch} {
-		my destroy
-	}
-	method watch {ch events} {
-		# Must be present but we ignore it because we do not
-		# post any events
-	}
-}
-
-oo::class create CapturingChan {
-	variable var
-	constructor {varnameOrArgs {body ""}} {
-		# Make an alias from the instance variable to the global variable
-		if {[llength $varnameOrArgs] == 2} {
-			oo::objdefine [self] method write $varnameOrArgs $body
-		} {
-			my eval [list upvar \#0 $varnameOrArgs var]
-		}
-	}
-	method initialize {handle mode} {
-		if {$mode ne "write"} {error "can't handle reading"}
-		return {finalize initialize write}
-	}
-	method finalize {handle} {
-		# Do nothing, but mandatory that it exists
-	}
-	method write {handle bytes} {
-		append var $bytes
-		# Return the empty string, as we are swallowing the bytes
-		return {}
-	}
-}
-
-#set myBuffer ""
-#chan push stdout [CapturingChan new myBuffer]
-
-#chan pop stdout

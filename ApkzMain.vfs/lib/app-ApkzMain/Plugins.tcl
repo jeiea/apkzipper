@@ -23,15 +23,10 @@ proc apktool args {
 		}
 		return [string bytelength $data] 
 	}
-	proc apktoolPredErr {chan data} {
-
-	}
 	try {
 		set ::_wrError $::wrError
 		set ::wrError [chan create write [InterChan new $predErrBody]]
 		fconfigure $::wrError -blocking false -buffering none
-#		lassign [chan pipe] r w
-		
 		set returnInfo [Java -jar [getVFile apktool.jar] {*}$args]
 	} finally {
 		close $::wrError
@@ -105,7 +100,11 @@ plugin Compile apkPath {
 	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\temp\\*
 	file delete -force -- $cApp(proj)\\temp
 	
-	puts $::wrInfo [mc {Sucessfully compiled.}]
+	if [regexp {compileRoutine} [info coroutine]] {
+		puts $::wrInfo [mc {Successfully system compiled.}]
+	} {
+		puts $::wrInfo [mc {Successfully compiled.}]
+	}
 }
 
 plugin {System compile} apkPath {
@@ -209,15 +208,12 @@ plugin {Optimize png} apkPath {
 plugin {Switch sign} apkPath {
 	getNativePathArray $apkPath cApp
 	if ![file exist $cApp(proj) {Extract $apkPath}
-		if [file exist $cApp(proj)/META-INF] {
-			file delete -force -- $cApp(proj)/META-INF
-		} {
-			7za x -y -o$cApp(proj) $cApp(path) META-INF -r
-		}
-	}
 
-plugin {Read log} {} {
-	exec cmd /c start $argv0
+	if [file exist $cApp(proj)/META-INF] {
+		file delete -force -- $cApp(proj)/META-INF
+	} {
+		7za x -y -o$cApp(proj) $cApp(path) META-INF -r
+	}
 }
 
 proc globFilter {args} {
@@ -313,8 +309,9 @@ proc {Clean folder} detail {
 				lappend listItem {}
 			}
 		}
-		set confirm [ListAndConfirmDlg [join [mc {Are you sure you want to delete these items?}] \
-			[mc {Maybe these are sent to recycle bin.}]] \
+		set confirm [ListAndConfirmDlg [join [list \
+			[mc {Are you sure you want to delete these items?}] \
+			[mc {Maybe these are sent to recycle bin.}]] \n] \
 			[list [mc Path] [mc {Is directory?}]] $listItem]
 		if !$confirm return
 	}
@@ -328,7 +325,7 @@ proc {Clean folder} detail {
 	set count 0
 	foreach {path tag} $listItem {
 		puts $::wrInfo "[mc Delete]: $path $tag"
-		{*}$delete $item
+		after 1 [list {*}$delete $path]
 		incr count
 		update idletasks
 	}
@@ -339,7 +336,7 @@ proc {Clean folder} detail {
 plugin {Check update} {} {
 #	if [::View::running_other_task?] return
 
-	set ::currentOp "update"
+	set ::currentOp {update}
 	set exit {set ::currentOp ""; return}
 	set updateFileSignature {Apkz Update Information File}
 
@@ -412,6 +409,27 @@ plugin {Check update} {} {
 	eval $exit
 }
 
+proc queryApiLevel {apkPath} {
+	# Query SDK version from original apk
+	set api {}
+	set err [catch {
+	if [file exist $apkPath] {
+		lassign [chan pipe] r w
+		bgopen -chan $w -conderror &&0 [getVFile aapt.exe] dump badging $apkPath
+		close $w
+		set manifest [read $r]
+		close $r
+		regexp {targetSdkVersion:'(\d*)'} $manifest] {} api
+		if {$api eq {}} {
+			regexp {sdkVersion:'(\d*)'} $manifest] {} api
+		}
+	}}]
+	if $err {
+		puts $::wrVerbose [mc {API Level detection failed. Default value applied.}]
+	}
+	return $api
+}
+
 plugin {Deodex} {apkPath} {
 	getNativePathArray $apkPath cApp
 	
@@ -422,15 +440,12 @@ plugin {Deodex} {apkPath} {
 	
 	puts -nonewline $::wrInfo [mc {Deodexing...}]
 	
-	# Query SDK version from original apk
-	if [file exist $cApp(path)] {
-		set manifest [aapt dump badging $cApp(path)]
-		puts $manifest
-	}
-	
+	set api [queryApiLevel $apkPath]
+	if {$api ne {}} {set api "-a $api"}
+
 	file delete -force $dexDir $dex
 	set apkDir [file dirname $cApp(path)]
-	baksmali -d $apkDir/framework -d $apkDir -x $odex -o $dexDir
+	baksmali -d $apkDir/framework -d $apkDir -x $odex -o $dexDir {*}$api
 	puts $::wrInfo [mc { Complete.}]
 }
 
@@ -440,6 +455,9 @@ plugin {Dex} {apkPath} {
 	set dexDir [file rootname $cApp(proj)].odex
 	set dex [file nativename $cApp(proj)/classes.dex]
 	
+	set api [queryApiLevel $apkPath]
+	if {$api ne {}} {set api "-a $api"}
+
 	puts -nonewline $::wrInfo [mc {Dexing... }]
 	smali $dexDir -o $dex
 	puts $::wrInfo [mc {Complete.}]
@@ -480,4 +498,55 @@ plugin {View java source} {apkPath} {
 	}
 	
 	puts $::wrError [mc {Cannot find classes.dex}]
+}
+
+package require tcl::chan::null
+proc bugReport {} {
+	set null [tcl::chan::null]
+	set reportFile [file nativename $::exeDir/ApkzBugReport.zip]
+	file delete -force $reportFile
+	set psr [auto_execok psr.exe]
+	if {$psr ne {}} {
+		bgopen -conderror &&0 $psr /output $reportFile /recordpid [pid]
+	}
+	append mes [mc {Textbox's verbose message appeared.}]\n
+	if [file exist $reportFile] {
+		bgopen -outchan $null [getVFile 7za.exe] e -y -o[getVFile] $reportFile
+		file delete -force $reportFile
+		set latestReport [lindex [lsort -decreasing [glob -directory [getVFile] *.mht]] 0]
+		exec {*}[auto_execok start] {} $latestReport
+		append mes [mc {Recorded report and textbox log will be sent intact.}]\n
+	} {
+		append mes [mc {Textbox log will be sent intact.}]\n
+	}
+	append mes [mc {Are you OK?}]
+
+	set tCon .bottomConsole.tCmd
+	$tCon tag config Verbose -elide 0
+	set reply [modeless_dialog .reportConfirm [mc {Bug report}] $mes {} 0 [mc Yes] [mc No]]
+
+	$tCon tag config Verbose -elide 1
+	if $reply return
+
+	set log [$tCon get 0.0 end]
+	set logFile [open [getVFile log.txt] w]
+	puts -nonewline $logFile $log
+	close $logFile
+
+	set reportFile [file rootname $reportFile].7z
+	file delete -force $reportFile
+	set includeMht [expr {[info exist latestReport] ? "-i!$latestReport" : {}}]
+	bgopen -outchan $null [getVFile 7za.exe] a -y -mx9 $reportFile [getVFile log.txt] {*}$includeMht
+
+	set archive [open $reportFile rb]
+	set data [read $archive]
+	close $archive
+	set transErr [catch {http::geturl http://jeiea.dothome.co.kr/bugreport.php \
+		-method POST -query $data -type {application/x-7z-compressed}}]
+	if $transErr {
+		puts $::wrError [mc {Cannot connect to server.}]
+	} {
+		puts $::wrInfo [mc {Report file has been sent.}]
+	}
+	close $null
 }

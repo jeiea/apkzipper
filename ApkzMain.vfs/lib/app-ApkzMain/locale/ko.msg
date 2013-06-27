@@ -180,7 +180,7 @@ mcset ko {Extracting...} {압축 푸는 중...}
 mcset ko {Extraction finished.} {압축이 풀렸습니다.}
 mcset ko {Decompiling...} {디컴파일 중...}
 mcset ko {Successfully decompiled.} {디컴파일 되었습니다.}
-mcset ko {Sucessfully compiled.} {컴파일 되었습니다.}
+mcset ko {Successfully compiled.} {컴파일 되었습니다.}
 mcset ko {Restoring original resource and manifest...} {원본 리소스와 매니페스트 복원 중...}
 mcset ko {Compressing...} {압축 중...}
 mcset ko {Compressed.} {압축되었습니다.}
@@ -237,7 +237,7 @@ Don't use it with 'Extract'
 Right click is 'System compile' which preserve resource.arsc} {디컴파일로 분해한 것을 조립합니다.
 압축풀기하고서 쓰지 마세요.
 
-우클릭하면 resource.arsc를 수정하지 않는 시스템컴파일을 합니다.
+우클릭하면 resource.arsc를 보존하는 시스템컴파일을 합니다.
 SystemUI.apk같은 시스템 앱들을 컴파일할 때 상단바 사라짐 등을 방지합니다.}
 mcset ko {Sign packed .apk/.jar file.
 Original sign will be remained after packing.} {조립한 .apk/.jar파일에 서명합니다.
@@ -270,3 +270,19 @@ mcset ko {Configuration is set to default.} {설정이 초기화되었습니다.
 mcset ko {simpleView is incomplete feature. Avoid to use it.} {간단모드는 미완성 기능입니다. 안 쓰는 게 좋을 거예요.}
 mcset ko {Unsigned file not found.} {사인할 파일이 없습니다.}
 mcset ko {It seems to be signed already.} {이미 사인이 된 것 같습니다.}
+mcset ko {API Level detection failed. Default value applied.} {API레벨 감지에 에러가 발생했습니다. 기본값이 적용됩니다.}
+mcset ko {Supported command:} {쓸 수 있는 명령어: 설명}
+mcset ko {push [<remote path>]} {push [<폰 경로>]: 선택한 앱을 지정한 경로로 전송합니다.}
+mcset ko {push <local> <remote>} {push <로컬 경로> <폰 경로>: 지정한 폴더 및 파일을 전송합니다.}
+mcset ko {pull <remote path>} {pull <폰 경로>: 지정한 파일 및 폴더를 가져옵니다.}
+mcset ko {pull <remote> <local>} {pull <폰 경로> <로컬 경로>: 지정한 위치에 가져옵니다.}
+mcset ko {Numbers written in detail view are accepted.} {수동모드에 있는 버튼 숫자도 명령어로 쓸 수 있습니다.}
+mcset ko {shell, connect, exit} {shell, connect, exit}
+mcset ko {Successfully system compiled.} {시스템컴파일 되었습니다.}
+mcset ko {Bug report} {버그 리포트}
+mcset ko {Textbox's verbose message appeared.} {세부로그를 나타나게 했습니다.}
+mcset ko {Recorded report and textbox log will be sent intact.} {방금 뜬 웹 페이지랑 지금 보이는 로그가 그대로 전송됩니다.}
+mcset ko {Are you OK?} {전송하시겠습니까?}
+mcset ko {Report file has been sent.} {리포트 파일이 전송되었습니다.}
+mcset ko {Textbox log will be sent intact.} {지금 보이는 로그가 그대로 전송됩니다.}
+mcset ko {Cannot connect to server.} {서버 접속에 실패해 리포트하지 못했습니다.}
