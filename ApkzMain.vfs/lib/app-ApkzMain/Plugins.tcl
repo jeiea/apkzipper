@@ -409,12 +409,17 @@ plugin {Check update} {} {
 	eval $exit
 }
 
+package require tcl::chan::variable
 proc queryApiLevel {apkPath} {
 	# Query SDK version from original apk
 	set api {}
 	set err [catch {
 	if [file exist $apkPath] {
 		lassign [chan pipe] r w
+#		set w [::tcl::chan::variable ::manifest]
+		chan configure $w -blocking false -buffering full
+		chan configure $r -blocking false -buffering full
+#		set null [::tcl::chan::null]
 		bgopen -chan $w -conderror &&0 [getVFile aapt.exe] dump badging $apkPath
 		close $w
 		set manifest [read $r]

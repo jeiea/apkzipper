@@ -1,7 +1,16 @@
 Apkz Update Information File
 
+2.3 {
+description {add: 레이아웃 추가
+add: 버그리포트 기능 추가
+update: baksmali/smali v2.0b4 -> v2.0b5
+...}
+downloadurl http://db.tt/miDhvPYx
+filename "ApkZipper v2.3 beta.exe"
+distgrade beta}
+
 2.2 {
-description {add:디오덱싱 기능 추가
+description {add: 디오덱싱 기능 추가
 add: 메시지 색깔 구분 추가
 add: 자바소스 보기 추가
 이전버전의 설정파일을 지우려면 apkz.cfg를 찾아서 삭제해주세요.}

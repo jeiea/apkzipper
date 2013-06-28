@@ -54,9 +54,52 @@ proc scan_dir {dirname pattern} {
 	concat $out [glob -type f -nocomplain -dir $dirname {*}$pattern]
 }
 
+proc topen {args} {
+	puts "topen: $args"
+	catch {
+		::twapi::allocate_console
+		set hWnd [::twapi::get_console_window]
+		::twapi::hide_window $hWnd
+	}
+	lassign [chan pipe] inr inw
+	lassign [chan pipe] outr outw
+	lassign [chan pipe] errr errw
+	set inrHandle [twapi::get_tcl_channel_handle $inr read]
+	set outwHandle [twapi::get_tcl_channel_handle $outw write]
+	set errwHandle [twapi::get_tcl_channel_handle $errw write]
+#	lassign [twapi::create_process {} -cmdline $args -showwindow hidden\
+		-inherithandles true -detached 0 -stdhandles [list $inrHandle $outwHandle $errwHandle]] pid
+	lassign [twapi::create_process {} -cmdline $args -showwindow hidden\
+		-inherithandles true -detached 0 -stdchannels [list $inr $outw $errw]] pid
+	
+	chan configure $inr -blocking false -buffering line
+	chan configure $outr -blocking false -buffering line
+	chan configure $errr -blocking false -buffering line
+	#		
+	#		while {[twapi::process_exists $startup]} {after 100}
+	set ::bgAlive($outr) {}
+	fileevent $outr readable "puts \[read $outr]"
+	fileevent $errr readable "puts \[read $errr]"
+	
+	set hProc [twapi::get_process_handle $pid -access generic_all]
+	set bgAlive($pid) 0
+	twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgAlive($pid) 1]\;#
+	vwait ::bgAlive($pid)
+	set exitcode [twapi::get_process_exit_code $hProc]
+	twapi::close_handle $hProc
+	if {$::bgAlive($pid) eq {suspend}} {
+		error {Canceled by user}
+	}
+	unset ::bgAlive($pid)
+}
 
 if {$tcl_platform(platform) == {windows}} {
 	proc bgopen {args} {
+		catch {
+			::twapi::allocate_console
+			set hWnd [::twapi::get_console_window]
+			::twapi::hide_window $hWnd
+		}
 		set w(out) $::wrDebug
 		set w(err) $::wrError
 		set condErr {}
@@ -80,16 +123,16 @@ if {$tcl_platform(platform) == {windows}} {
 
 		foreach ch {out err} {
 #			refchan doesn't have OS handle, so mediate channel required.
-			if ![string match file* $w($ch)] {
+#			if ![string match file* $w($ch)] {
 				set dest $w($ch)
 				lassign [chan pipe] r($ch) w($ch)
-				chan configure $r($ch) -blocking false -buffering line
-				chan configure $w($ch) -blocking false -buffering line
-				chan event $r($ch) readable "puts -nonewline {$dest} \[read {$r($ch)}\]"
-			}
+				chan configure $r($ch) -blocking false -buffering none
+				chan configure $w($ch) -blocking false -buffering none
+				chan event $r($ch) readable "puts aef; puts -nonewline {$dest} \[read {$r($ch)}\]"
+#			}
 		}
 
-		set pid [eval exec $cmdline >@ $w(out) 2>@ $w(err) &]
+		set pid [eval exec -- $cmdline >@ $w(out) 2>@ $w(err) &]
 		
 		set hProc [twapi::get_process_handle $pid -access generic_all]
 		set bgAlive($pid) 0
