@@ -1,4 +1,4 @@
-package provide app-ApkzMain 2.3
+package provide app-ApkzMain 2.3.4
 
 set libpath [file dirname [info script]]
 lappend auto_path [file dirname $libpath]
@@ -14,6 +14,10 @@ package require tooltip
 package require tcl::transform::observe
 package require tls
 package require autoproxy
+package require tcl::chan::variable
+package require tcl::chan::fifo
+package require tcl::chan::null
+package require tcl::transform::observe
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 

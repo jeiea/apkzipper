@@ -6,43 +6,35 @@ foreach jarfile {signapk baksmali smali} {
 }
 
 proc apktool args {
-	set predErrBody {
-		my variable hasErr
-		if ![info exist hasErr] {
-			set hasErr false
-		}
-		foreach line [split $data \n] {
-			if [string match Excep* $line]||[string match -nocase error]||$hasErr {
-				puts -nonewline $::_wrError $line
-				set hasErr true
-			} elseif [string match W:* $line] {
-				puts -nonewline $::wrWarning $line
-			} {
-				puts -nonewline $::wrDebug $line
-			}
-		}
-		return [string bytelength $data] 
-	}
-	try {
-		set ::_wrError $::wrError
-		set ::wrError [chan create write [InterChan new $predErrBody]]
-		fconfigure $::wrError -blocking false -buffering none
-		set returnInfo [Java -jar [getVFile apktool.jar] {*}$args]
-	} finally {
-		close $::wrError
-		set ::wrError $::_wrError
-		unset ::_wrError
-		if [info exist returnInfo] {
-			return $returnInfo
+	set ::hasErr false
+	proc pred {chan} {
+		set line [gets $chan]
+		if [string match Excep* $line]||[string match -nocase error]||$::hasErr {
+			puts $::wrError $line
+			set ::hasErr true
+		} elseif [string match W:* $line] {
+			puts $::wrWarning $line
+		} {
+			puts $::wrDebug $line
 		}
 	}
+	set result [tcl::chan::fifo]
+	chan configure $result -blocking false -buffering line
+	chan event $result readable [list pred $result]
+	set exitcode [bgopen -chan $result [Java] -jar [getVFile apktool.jar] {*}$args]
+	close $result
+	return $exitcode
 }
 
-foreach exefile {fastboot optipng 7za aapt zipalign jd-gui} {
+foreach exefile {fastboot 7za aapt zipalign jd-gui} {
 	eval [format {
 		proc %1$s args {
 			return [bgopen [getVFile %1$s.exe] {*}$args]
 	}} $exefile]
+}
+
+proc optipng args {
+	bgopen -chan $::wrDebug [getVFile optipng.exe] {*}$args
 }
 
 plugin Extract apkPath {
@@ -80,10 +72,8 @@ plugin Compile apkPath {
 		puts $::wrInfo [mc {apk compiling...}]
 	}
 
-	if [apktool b -a [getVFile aapt.exe] $cApp(proj) $cApp(unsigned)] {
-		puts $::wrError [mc {Compile failed. Task terminated.}]
-		return
-	}
+	apktool b -a [getVFile aapt.exe] $cApp(proj) $cApp(unsigned)
+
 	puts $::wrDebug [mc {Adjusting compressing level...}]
 	# INFO: -aoa는 overwrite all destination files이다
 	# TODO: file nativename... 귀찮지만 수동으로 그거 박는 게 견고한 듯
@@ -133,10 +123,14 @@ plugin Zip apkPath {
 	puts $::wrInfo [mc Compressed.]
 }
 
-plugin {Install framework} {} {
-	set frameworks [dlgSelectAppFiles [mc {Select framework files}]]
+plugin {Install framework} {args} {
+	if {$args ne {}} {
+		set frameworks $args
+	} {
+		set frameworks [dlgSelectAppFiles [mc {Select framework files}]]
+	}
 
-	if {$frameworks != ""} {
+	if {$frameworks ne {}} {
 		puts $::wrInfo [mc {Framework installing...}]
 		foreach framework $frameworks {apktool if $framework}
 		puts $::wrInfo [mc {Framework installed.}]
@@ -300,6 +294,7 @@ proc {Clean folder} detail {
 		{Delete all}					{set target [globFilter $modDir/*.apk $::exeDir/projects/*]}
 	}
 
+	set listItem {}
 	if [llength $target] {
 		foreach item $target {
 			lappend listItem [AdaptPath $item]
@@ -312,7 +307,7 @@ proc {Clean folder} detail {
 		set confirm [ListAndConfirmDlg [join [list \
 			[mc {Are you sure you want to delete these items?}] \
 			[mc {Maybe these are sent to recycle bin.}]] \n] \
-			[list [mc Path] [mc {Is directory?}]] $listItem]
+			[list [mc Path] [mc {Is directory?}]]]
 		if !$confirm return
 	}
 
@@ -409,25 +404,20 @@ plugin {Check update} {} {
 	eval $exit
 }
 
-package require tcl::chan::variable
 proc queryApiLevel {apkPath} {
 	# Query SDK version from original apk
+	global manifest
 	set api {}
 	set err [catch {
 	if [file exist $apkPath] {
-		lassign [chan pipe] r w
-#		set w [::tcl::chan::variable ::manifest]
-		chan configure $w -blocking false -buffering full
-		chan configure $r -blocking false -buffering full
-#		set null [::tcl::chan::null]
+		set w [::tcl::chan::variable manifest]
 		bgopen -chan $w -conderror &&0 [getVFile aapt.exe] dump badging $apkPath
 		close $w
-		set manifest [read $r]
-		close $r
 		regexp {targetSdkVersion:'(\d*)'} $manifest] {} api
 		if {$api eq {}} {
 			regexp {sdkVersion:'(\d*)'} $manifest] {} api
 		}
+		unset manifest
 	}}]
 	if $err {
 		puts $::wrVerbose [mc {API Level detection failed. Default value applied.}]
@@ -505,7 +495,6 @@ plugin {View java source} {apkPath} {
 	puts $::wrError [mc {Cannot find classes.dex}]
 }
 
-package require tcl::chan::null
 proc bugReport {} {
 	set null [tcl::chan::null]
 	set reportFile [file nativename $::exeDir/ApkzBugReport.zip]

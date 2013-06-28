@@ -14,7 +14,18 @@ proc WinADB::adb args {
 	if [expr {{adb.exe} ni $processNames}] {
 		puts $::wrInfo [mc {Initializing ADB...}]
 	}
-	set adbout [bgopen [getVFile adb.exe] {*}$args]
+	
+	global adbout
+	set logw [tcl::chan::variable adbout]
+	set logr [tcl::chan::null]
+#	set ch [tcl::transform::observe stdout $logw $logr]
+#	chan configure $logw -buffering none -blocking false
+#	chan configure $ch -buffering none -blocking false
+	bgopen [getVFile adb.exe] {*}$args
+#	chan pop stdout
+	close $logw
+	close $logr
+	puts asdf
 
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
 	# 저 adbErrMap을 쓰면 될 듯
@@ -50,7 +61,7 @@ proc WinADB::adb_waitfor cmd {
 	::twapi::allocate_console
 	::twapi::create_process {} -cmdline $cmdline -title [mc "ADB $cmd"] -detached 0 -inherithandles 1
 
-	global hConOut
+	set hConIn [::twapi::get_console_handle stdin]
 	set hConOut [::twapi::get_console_handle stdout]
 	set idealSize [::twapi::get_console_window_maxsize]
 	set width [expr [lindex $idealSize 0] - 3]
@@ -59,6 +70,7 @@ proc WinADB::adb_waitfor cmd {
 	set hWnd [::twapi::get_console_window]
 	::twapi::maximize_window $hWnd
 	::twapi::set_console_title "ADB $cmd"
+	::twapi::modify_console_input_mode $hConIn {*}$::config(conInputMode)
 #	get_window_coordinates HWIN
 	::twapi::free_console
 }
@@ -102,12 +114,16 @@ plugin {Export to phone} {apkPath {dstPath ""}} {
 }
 
 proc WinADB::isADBState args {
-	regexp -line {^(unknown|offline|bootloader|device)$} [WinADB::adb get-state] state
+	if ![regexp -line {^(unknown|offline|bootloader|device)$} [adb get-state] state] {
+		return false
+	}
+
 	foreach check $args {
-		if {$state == $check} {
+		if {$state eq $check} {
 			return true
 		}
 	}
+
 	return false
 }
 

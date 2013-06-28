@@ -33,6 +33,9 @@ array set configDefault {
 	autoUpdate true
 	rememberWindowPos true
 	viewMode tutorialView
+	conInputMode {-echoinput 1 -quickeditmode 1 -windowinput 0
+		-lineinput 1 -processedinput 1 -mouseinput 1
+		-autoposition 0 -extendedmode 1 -insertmode 1}
 }
 array set config [array get configDefault]
 

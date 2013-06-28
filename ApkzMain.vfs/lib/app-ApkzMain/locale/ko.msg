@@ -286,3 +286,4 @@ mcset ko {Are you OK?} {전송하시겠습니까?}
 mcset ko {Report file has been sent.} {리포트 파일이 전송되었습니다.}
 mcset ko {Textbox log will be sent intact.} {지금 보이는 로그가 그대로 전송됩니다.}
 mcset ko {Cannot connect to server.} {서버 접속에 실패해 리포트하지 못했습니다.}
+mcset ko {Auto decompile} {프레임워크 설치와 디컴파일}

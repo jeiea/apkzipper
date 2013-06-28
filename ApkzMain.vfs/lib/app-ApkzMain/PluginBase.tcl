@@ -9,12 +9,14 @@ proc Java args {
 	}
 
 	if {$javapath eq {}} {
-		error [mc "Java not found.\nTo solve this problem, install JRE or JDK."] {} 100
+		error [mc "Java not found.\nTo solve this problem, install JRE or JDK."] {} {CustomError JavaNotFound}
 	}
 
-	# TODO: 이제 저 bgopen은 error를 일으킬 수 있음. 어디서 핸들링할까.
-	bgopen $javapath {*}$args
-	return 0
+	if {$args eq {}} {
+		return $javapath
+	} {
+		bgopen $javapath {*}$args
+	}
 }
 
 # vfs의 바이너리를 복사해서 경로를 리턴. vfs에 없으면 임시폴더 임시파일 경로를 리턴.

@@ -164,6 +164,12 @@ proc View::bottomPane.generate {} {
 	return $frame
 }
 
+plugin {Auto decompile} {apkPath} {
+	set frameworks [glob -nocomplain [file dirname $apkPath]/framework/*.apk]
+	if {$frameworks ne {}} {{::Install framework} business {*}$frameworks}
+	coroutine autoDecompile eval [list {::Decompile} business $apkPath]
+}
+
 plugin {Change to manual mode} {} {
 	.mbar invoke 4
 	rename [info coroutine] {}
@@ -173,6 +179,11 @@ plugin {Change to manual mode} {} {
 plugin {Pack} {apkPath} {
 	getNativePathArray $apkPath cApp
 	
+	set odexDir [file rootname $cApp(proj)].odex
+	if [file isdirectory $odexDir] {
+		coroutine pack[generateID] eval [list {::Dex} business $apkPath]
+	}
+
 	if [file exist $cApp(proj)/apktool.yml] {
 		set fYml [open $cApp(proj)/apktool.yml]
 		set apkInfo [read $fYml]
@@ -185,7 +196,7 @@ plugin {Pack} {apkPath} {
 	} {
 		set plugin {::Zip}
 	}
-	coroutine pack[generateID] $plugin business $apkPath
+	coroutine pack[generateID] eval [list $plugin business $apkPath]
 }
 
 proc View::simpleView {} {
@@ -212,10 +223,10 @@ proc View::simpleView.generate {} {
 		bImport		{Import from phone}
 		bManual		{Change to manual mode}
 		bExtract	{Extract}
-		bDecompile	{Decompile}
+		bDecompile	{Auto decompile}
 		bDeodex		{Deodex}
 		bIFramework {Install framework}
-		bExplProj	{Explore app dir}
+		bExplProj	{Explore project}
 		bExplOdex	{Explore dex dir}
 		bPacking	{Pack}
 		bSigning	{Sign}
@@ -325,7 +336,8 @@ proc View::textcon.verbose {level} {
 	set levels {Error Warning Info Debug Verbose}
 
 	if {$level ni $levels} {
-		error {verbose level incorrect} "$level is not supported level." {custom verbose}
+		error {verbose level incorrect} "$level is not supported level." \
+			{CustomError NotSupportedLevel}
 	}
 
 	variable tCon

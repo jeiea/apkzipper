@@ -210,9 +210,7 @@ proc Session::TraverseCApp {pluginName args} {
 		foreach apkPath $cAppPaths {
 			try {
 				$pluginName business $apkPath {*}$args
-			} trap {CUSTOM ERR} {msg info} {
-				puts $::wrError "$msg: $info\n"
-			} trap bgopenError {msg info} {
+			} trap {CustomError} {msg info} {
 				puts $::wrError $msg
 				puts $::wrVerbose $info
 			} on error {msg info} {
@@ -222,7 +220,8 @@ proc Session::TraverseCApp {pluginName args} {
 						[mc ERROR]:\ [mc {File name malformed.}]\n \
 						[mc {Please retry after rename. (e.g. test.apk)}]\n] {}]
 				} {
-					puts $::wrError "[mc ERROR]: $errorinfo\n"
+					puts $::wrError "[mc ERROR]: $msg\n"
+					puts $::wrVerbose $info\n
 				}
 			}
 		}
