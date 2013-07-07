@@ -1,4 +1,4 @@
-package provide app-ApkzMain 2.3.4
+package provide app-ApkzMain 2.3.5
 
 set libpath [file dirname [info script]]
 lappend auto_path [file dirname $libpath]
@@ -16,8 +16,10 @@ package require tls
 package require autoproxy
 package require tcl::chan::variable
 package require tcl::chan::fifo
+package require tcl::chan::memchan
 package require tcl::chan::null
 package require tcl::transform::observe
+package require oo::util
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
@@ -31,7 +33,7 @@ source $libpath/View.tcl
 source $libpath/WinADB.tcl
 source $libpath/Session.tcl
 if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
-	source $::exeDir/InfResrc/ApkzDbg.tcl
+	source $::exeDir/ApkzTest/ApkzDbg.tcl
 }
 
 autoproxy::init

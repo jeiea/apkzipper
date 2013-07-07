@@ -33,8 +33,21 @@ foreach exefile {fastboot 7za aapt zipalign jd-gui} {
 	}} $exefile]
 }
 
+proc predPNGout {chan} {
+	set data [read $chan]
+	puts -nonewline $::wrDebug $data
+}
+
 proc optipng args {
-	bgopen -chan $::wrDebug [getVFile optipng.exe] {*}$args
+	set outchan [tcl::chan::fifo]
+	chan configure $outchan -blocking false -buffering none
+	chan event $outchan readable [list predPNGout $outchan]
+#	bgopen -chan $outchan [getVFile optipng.exe] {*}$args
+	lassign [chan pipe] r w
+	chan configure $r -blocking false -buffering none
+	chan configure $w -blocking false -buffering none
+	chan event $r readable "puts -nonewline $outchan \[read $r]"
+	return [exec -- [getVFile optipng.exe] {*}$args >@ $w 2>@ $w &]
 }
 
 plugin Extract apkPath {
@@ -183,19 +196,53 @@ plugin {Explore app dir} {} {
 
 plugin {Explore dex dir} apkPath {
 	getNativePathArray $apkPath cApp
-	set dexDir [file rootname $cApp(proj)].odex
-	if [file isdirectory $dexDir] {
-		catch {exec explorer $dexDir}
+	if [file isdirectory $cApp(deoDir)] {
+		catch {exec explorer $cApp(deoDir)}
 	}
 }
 
 plugin {Optimize png} apkPath {
 	getNativePathArray $apkPath cApp
 
+	set pngFiles [lsearch -all -inline -not [scan_dir $cApp(proj) *.png] *$cApp(name)/build/*]
+	set workers  [expr {int($::env(NUMBER_OF_PROCESSORS) * 1.4)}]
+	
+	# Make coroutine generator.
+#	coroutine ::pngDeployer apply {{pngFiles mainRoutine} {
+#		yield
+#		foreach png $pngFiles {
+#			puts deploy:$png
+#			yield $png
+#		}
+#		$mainRoutine
+#	}} $pngFiles [info coroutine]
+	
 	puts $::wrInfo [mc {Picture optimizing...}]
-	foreach pngfile [scan_dir $cApp(proj) *.png] {
-		optipng $pngfile
+	
+	foreach png $pngFiles {
+		optipng $png
+		update
 	}
+#	# Make and initiate coroutine workers.
+#	for {set i 0} {$i < $workers} {incr i} {
+#		puts "worker gen $i"
+#		coroutine ::pngWorker($i) eval { while 1 {
+#			set png [::pngDeployer]
+#			if {$png eq {}} return
+#
+#			set pid [optipng $png]
+#			set handle [::twapi::get_process_handle $pid -access generic_all]
+#			set asyncBody [format {
+#			} $handle [info coroutine]]
+#			puts "asyncBody: $asyncBody"
+#			::twapi::wait_on_handle $handle -executeonce 1 \
+#				-async "::twapi::close_handle {$handle}; {[info coroutine]};#" 
+#			yield
+#		}}
+#	}
+	puts "worker generation finished"
+#	yield
+	puts "all finished"
 	puts $::wrInfo [mc {Picture optimization finished.}]
 }
 
@@ -275,23 +322,28 @@ proc {Clean folder} detail {
 		foreach capp $::cAppPaths {
 			getNativePathArray $capp cApp
 			set result [globFilter $cApp(signed) $cApp(unsigned)]
-			set proj [globFilter [file rootname $cApp(proj)].*]
-			set path [globFilter $cApp(path)]
+			set proj [globFilter $cApp(proj) $cApp(deoDir)]
+			set original [globFilter $cApp(path) $cApp(odex)]
 			switch $detail {
-				{Delete current result}				{set target [concat $target $result]}
-				{Delete current workdir}			{set target [concat $target $proj]}
-				{Delete current except original}	{set target [concat $target $result $proj]}
-				{Delete current all}				{set target [concat $target $result $proj $path]}
+				{Delete current result}				{set target [concat $result]}
+				{Delete current workdir}			{set target [concat $proj]}
+				{Delete current except original}	{set target [concat $result $proj]}
+				{Delete current all}				{set target [concat $result $proj $original]}
 			}
 		}
 	}
 
-	set modDir $::exeDir/modding
+	if {$::cAppPaths ne {}} {
+		set modDir [file dirname [lindex $::cAppPaths 0]]
+	} {
+		set modDir $::exeDir/modding
+	}
+
 	switch $detail {
 		{Delete all result}				{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk]}
-		{Delete all workdir}			{set target [globFilter $::exeDir/projects/*]}
-		{Delete all except original}	{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk $::exeDir/projects/*]}
-		{Delete all}					{set target [globFilter $modDir/*.apk $::exeDir/projects/*]}
+		{Delete all workdir}			{set target [globFilter $::exeDir/projects/* $modDir/*.dex]}
+		{Delete all except original}	{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk $::exeDir/projects/* $modDir/*.dex]}
+		{Delete all}					{set target [globFilter $modDir/*.apk $modDir/*.odex $::exeDir/projects/* $modDir/*.dex]}
 	}
 
 	set listItem {}
@@ -307,7 +359,7 @@ proc {Clean folder} detail {
 		set confirm [ListAndConfirmDlg [join [list \
 			[mc {Are you sure you want to delete these items?}] \
 			[mc {Maybe these are sent to recycle bin.}]] \n] \
-			[list [mc Path] [mc {Is directory?}]]]
+			[list [mc Path] [mc {Is directory?}]] $listItem]
 		if !$confirm return
 	}
 
@@ -425,36 +477,33 @@ proc queryApiLevel {apkPath} {
 	return $api
 }
 
+# smali가 odex의존성 참조경로를 바꾸는 파라미터를 지원하지 않기 때문에 어쩔 수 없이
+# 디오덱스 내용물 파일 경로를 앱 파일 경로하고 같은 경로에 위치시키게 되었다.
 plugin {Deodex} {apkPath} {
 	getNativePathArray $apkPath cApp
 	
-	set odex [file rootname $cApp(path)].odex
-	set dex [file nativename $cApp(proj)/classes.dex]
-	set dexDir [file rootname $cApp(proj)].odex/
-	ensureFiles $odex
+	ensureFiles $cApp(odex)
 	
 	puts -nonewline $::wrInfo [mc {Deodexing...}]
 	
 	set api [queryApiLevel $apkPath]
 	if {$api ne {}} {set api "-a $api"}
 
-	file delete -force $dexDir $dex
+	file delete -force $cApp(deoDir) $cApp(dex)
 	set apkDir [file dirname $cApp(path)]
-	baksmali -d $apkDir/framework -d $apkDir -x $odex -o $dexDir {*}$api
+	baksmali -d $apkDir -d $apkDir/framework -x $cApp(odex) -o $cApp(deoDir) {*}$api
 	puts $::wrInfo [mc { Complete.}]
 }
 
 plugin {Dex} {apkPath} {
 	getNativePathArray $apkPath cApp
 	
-	set dexDir [file rootname $cApp(proj)].odex
-	set dex [file nativename $cApp(proj)/classes.dex]
-	
 	set api [queryApiLevel $apkPath]
 	if {$api ne {}} {set api "-a $api"}
 
 	puts -nonewline $::wrInfo [mc {Dexing... }]
-	smali $dexDir -o $dex
+	catch {file mkdir [file dirname $cApp(dex)]}
+	smali $cApp(deoDir) -o $cApp(dex)
 	puts $::wrInfo [mc {Complete.}]
 }
 
@@ -473,22 +522,21 @@ proc dex2jd {dex} {
 plugin {View java source} {apkPath} {
 	getNativePathArray $apkPath cApp
 
-	set tmpdex [file rootname $cApp(proj)].dex
-	foreach appIdx {path unsigned signed} {
+	foreach appIdx {signed unsigned path} {
 		if [file exist $cApp($appIdx)] {
-			7za e -y -aoa $cApp($appIdx) -o$tmpdex classes.dex
+			7za e -y -aoa $cApp($appIdx) -o$cApp(dex) classes.dex
+			break
 		}
 	}
-	if [rdbleFile $tmpdex/classes.dex] {
-		dex2jd $tmpdex/classes.dex
+	if [rdbleFile $cApp(dex)/classes.dex] {
+		dex2jd $cApp(dex)/classes.dex
 		return
 	}
 	
-	set odex [file rootname $cApp(path)].odex
-	if [rdbleFile $odex] {
+	if [rdbleFile $cApp(odex)] {
 		::Deodex business $apkPath
 		::Dex business $apkPath
-		dex2jd $cApp(proj)/classes.dex
+		dex2jd $cApp(dex)
 		return
 	}
 	

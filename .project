@@ -16,47 +16,57 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1370662197655</id>
+			<id>1372487485164</id>
 			<name></name>
 			<type>13</type>
-			<matcher>
-				<id>org.eclipse.ui.ide.orFilterMatcher</id>
-				<arguments>
-					<matcher>
-						<id>org.eclipse.ui.ide.multiFilter</id>
-						<arguments>1.0-name-matches-false-false-.settings</arguments>
-					</matcher>
-					<matcher>
-						<id>org.eclipse.ui.ide.multiFilter</id>
-						<arguments>1.0-name-matches-false-false-ApkzMain.vfs</arguments>
-					</matcher>
-					<matcher>
-						<id>org.eclipse.ui.ide.multiFilter</id>
-						<arguments>1.0-name-matches-false-false-InfResrc</arguments>
-					</matcher>
-					<matcher>
-						<id>org.eclipse.ui.ide.multiFilter</id>
-						<arguments>1.0-projectRelativePath-matches-false-false-./</arguments>
-					</matcher>
-				</arguments>
-			</matcher>
-		</filter>
-		<filter>
-			<id>1370662197668</id>
-			<name></name>
-			<type>5</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
 				<arguments>1.0-name-matches-false-false-.gitignore</arguments>
 			</matcher>
 		</filter>
 		<filter>
-			<id>1370662197687</id>
+			<id>1372487485179</id>
 			<name></name>
-			<type>5</type>
+			<type>13</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
 				<arguments>1.0-name-matches-false-false-.buildpath</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1372487485193</id>
+			<name></name>
+			<type>13</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-.settings</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1372487485208</id>
+			<name></name>
+			<type>13</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-InfResrc</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1372487485223</id>
+			<name></name>
+			<type>13</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-ApkzTest</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1372487485238</id>
+			<name></name>
+			<type>13</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-ApkzMain.vfs</arguments>
 			</matcher>
 		</filter>
 	</filteredResources>

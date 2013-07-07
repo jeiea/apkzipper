@@ -2,6 +2,31 @@
 # 함수명 검색 잊지 말자.
 console show
 
+package require tcltest
+namespace import tcltest::*
+set testlog [file join $::exeDir Release test.log]
+file delete $testlog
+::tcltest::configure -testdir [file dirname [file normalize [info script]]]
+::tcltest::configure -outfile $testlog -errfile $testlog -singleproc 1
+proc r {} {runAllTests}
+
+# unittest part, will be promoted to tcltest
+proc testPNGWorker {} {
+	coroutine pngWorker($i) eval { while 1 {
+		set png [pngDeployer]
+		if [info exists handle] {
+			::twapi::close_handle $handle
+		}
+		
+		if {$png eq {}} return
+		set pid [optipng $png]
+		set handle [::twapi::get_process_handle $pid -access generic_all]
+		::twapi::wait_on_handle $handle -async [info coroutine]
+		yield
+	}}
+}
+
+
 proc pval {args} {
 	foreach varname $args {
 		upvar $varname value

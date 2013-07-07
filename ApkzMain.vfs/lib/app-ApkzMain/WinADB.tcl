@@ -15,17 +15,34 @@ proc WinADB::adb args {
 		puts $::wrInfo [mc {Initializing ADB...}]
 	}
 	
-	global adbout
-	set logw [tcl::chan::variable adbout]
-	set logr [tcl::chan::null]
-#	set ch [tcl::transform::observe stdout $logw $logr]
-#	chan configure $logw -buffering none -blocking false
-#	chan configure $ch -buffering none -blocking false
-	bgopen [getVFile adb.exe] {*}$args
-#	chan pop stdout
-	close $logw
-	close $logr
-	puts asdf
+	global adbout adberr
+	set adbout {}
+	set adberr {}
+	proc ::predADBout {chan} {
+		set data [read $chan]
+		append ::adbout $data
+		puts -nonewline $::wrDebug $data
+	}
+	proc ::predADBerr {chan} {
+		set data [read $chan]
+		append ::adbout $data
+		puts -nonewline $::wrError $data
+	}
+	set outchan [tcl::chan::fifo]
+	set errchan [tcl::chan::fifo]
+#	set outvar [tcl::chan::variable ::adbout]
+#	set errvar [tcl::chan::variable ::adbout]
+#	set outchan [tcl::transform::observe $::wrDebug $outvar {}]
+#	set errchan [tcl::transform::observe $::wrError $errvar {}]
+	chan configure $outchan -blocking false -buffering none
+	chan configure $errchan -blocking false -buffering none
+	chan event $outchan readable [list predADBout $outchan]
+	chan event $errchan readable [list predADBerr $errchan]
+	bgopen -outchan $outchan -errchan $errchan [getVFile adb.exe] {*}$args
+	predADBout $outchan
+	predADBerr $errchan
+	close $outchan
+	close $errchan
 
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
 	# 저 adbErrMap을 쓰면 될 듯
@@ -93,7 +110,7 @@ plugin {Import from phone} args {
 	set local [AdaptPath $local/[file tail $remote]]
 	puts $::wrInfo [mc {Pulling... %s --> %s} $remote $local]
 	::WinADB::adb pull $remote $local
-	{::Select app} business [list $local]
+	{::Select app} business $local
 }
 
 # TODO: 넣을 파일경로를 윈도우즈 가상경로로 만들어서..? ㅋㅋ
@@ -107,7 +124,7 @@ plugin {Export to phone} {apkPath {dstPath ""}} {
 		set remote $dstPath
 	}
 	if [string is space $remote] return
-	puts $::wrInfo [mc {Pushing... %s --> %s} $local $remote]]
+	puts $::wrInfo [mc {Pushing... %s --> %s} $local $remote]
 	WinADB::adb push $local $remote
 	puts $::wrInfo [mc { finished.}]
 	addHist [mc {Type remote path to push}] $remote
@@ -147,8 +164,14 @@ proc {WinADB::ADB connect} {{address ""}} {
 	}
 	if [string is space $address] return
 	addHist [mc {Type android net address}] $address
+
 	puts $::wrInfo [mc {ADB connecting...}]
-	adb connect $address
+	set msg [adb connect $address]
+	switch -glob -- $msg {
+		{*already*}		 {puts $::wrInfo [mc {Already connected.}]}
+		{*connected to*} {puts $::wrInfo [mc {Connected.}]}
+		default			 {puts $::wrInfo [mc {Failed to connect.}]}
+	}
 }
 
 proc {WinADB::Uninstall} apkPath {

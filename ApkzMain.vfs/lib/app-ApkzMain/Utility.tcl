@@ -94,7 +94,7 @@ if {$tcl_platform(platform) == {windows}} {
 			}
 		}
 
-		set pid [exec -ignorestderr -- {*}$cmdline >@ $w(out) 2>@ $w(err) &]
+		set pid [exec -- {*}$cmdline >@ $w(out) 2>@ $w(err) &]
 		
 		set hProc [twapi::get_process_handle $pid -access generic_all]
 		set bgAlive($pid) 0

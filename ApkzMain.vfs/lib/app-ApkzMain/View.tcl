@@ -38,7 +38,7 @@ proc View::init args {
 		set forceBreak false
 		set reply {}
 
-		{::Session::Select app} $dropPaths
+		{::Session::Select app} {*}$dropPaths
 
 		return %A
 	}
@@ -494,7 +494,8 @@ proc View::menu.attach {} {
 		array set ::config [array get ::configDefault]
 		array unset ::hist
 		array set ::hist [array get ::histDefault]
-		{::Select app} business {}
+		set ::cAppPaths {}
+		.stat.lApp config -text {}
 		puts $::wrInfo [mc {Configuration is set to default.}]
 	}
 	

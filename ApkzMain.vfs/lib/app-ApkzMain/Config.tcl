@@ -140,6 +140,7 @@ proc Config::loadConfig {} {
 			[mc {Config file of not compatible version was found.}]\n \
 			[mc {Due to major version difference, it'll use default setting.}]\n
 			[mc {Keep in mind that settings will be overwritten when termination.}]
+		error
 	}
 	# 마이너 버전 비교
 	if {[vcompare $fileVer $::apkzver 1] > 0} {
@@ -186,7 +187,10 @@ proc applyConfig {} {
 			::View::textcon.verbose $::config(verbose)
 		}
 		::hist(recentApk) {
-			{::Session::Select app} [lindex $::hist(recentApk) 0]
+			# HACK
+			if ![string is space [lindex $::hist(recentApk) 0]] {
+				{::Select app} business {*}[lindex $::hist(recentApk) 0]
+			}
 		}
 		::config(viewMode) {
 			.mbar entryconf 4 {*}[::View::menuUnderline [mc [::View::switchView $::config(viewMode)]]]

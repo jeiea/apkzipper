@@ -1,7 +1,7 @@
 proc Java args {
 	global javapath
 	if ![info exist javapath] {
-		set javapath [auto_execok java]
+		set javapath [lindex [auto_execok java] 0]
 		if {$javapath eq {}} {
 			set candidate [glob -nocomplain "$::env(SystemDrive)/Program Files*/java/*/bin/java.exe"]
 			if [llength $candidate] {set javapath [lindex $candidate 0]}
@@ -61,10 +61,13 @@ proc getNativePathArray {apkPath newVar} {
 	upvar $newVar cApp
 
 	set cApp(path) $apkPath
-	set cApp(name) [file tail $apkPath]
-	set cApp(proj) [file dirname $::vfsRoot]/projects/$cApp(name)
-	set cApp(unsigned) [file dirname $cApp(path)]/unsigned_$cApp(name)
-	set cApp(signed) [file dirname $cApp(path)]/signed_$cApp(name)
+	set cApp(name)		[file tail $apkPath]
+	set cApp(proj)		[file dirname $::vfsRoot]/projects/$cApp(name)
+	set cApp(unsigned)	[file dirname $cApp(path)]/unsigned_$cApp(name)
+	set cApp(signed)	[file dirname $cApp(path)]/signed_$cApp(name)
+	set cApp(odex)		[file rootname $cApp(path)].odex
+	set cApp(dex)		[file nativename $cApp(proj)/classes.dex]
+	set cApp(deoDir)	[file rootname $cApp(path)].dex
 
 	foreach idx [array names cApp] {
 		set cApp($idx) [file nativename $cApp($idx)]

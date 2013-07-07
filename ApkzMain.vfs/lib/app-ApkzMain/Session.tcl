@@ -2,9 +2,31 @@ namespace eval Session {
 	variable cAppPaths {}
 	variable currentOp {}
 }
+
 oo::class create Session {
+	variable cAppPaths
 	
+	constructor {apkPaths} {
+		variable cAppPaths $apkPaths
+	}
+	
+	# foreach {path proj unsigned signed} [Session iterate] {...}
+	method iterate {} {
+		variable cAppPaths
+		set pathlist {}
+		foreach apkPath $cAppPaths {
+			getNativePathArray $apkPath cApp
+			lappend pathlist $cApp(path) $cApp(proj) $cApp(unsigned) $cApp(signed)
+		}
+		return $pathlist
+	}
+	
+	# return cAppPaths
+	method capps {} {
+		return $cAppPaths
+	}
 }
+
 set cAppPaths {}
 
 proc Session::CommandParser line {
@@ -25,12 +47,11 @@ proc Session::CommandParser line {
 			destroy .
 		}
 		shell {
-			switch [llength $line] {
-				1 {::WinADB::adb_waitfor Shell}
-				2 {
-					puts $::wrInfo "$ [lrange $line 1 end]"
-					::WinADB::adb shell {*}[lrange $line 1 end]
-				}
+			if {[llength $line] == 1} {
+				::WinADB::adb_waitfor Shell
+			} {
+				puts $::wrInfo "$ [lrange $line 1 end]"
+				::WinADB::adb shell {*}[lrange $line 1 end]
 			}
 		}
 		connect {
@@ -136,6 +157,7 @@ proc Session::filterAndLoad paths {
 	}
 
 	set ::cAppPaths $qualified
+#	Session current [Session new $qualified]
 	if {$qualified ne {}} {
 		addHist recentApk $::cAppPaths
 	}
@@ -149,15 +171,14 @@ plugin {Select app} {args} {
 proc {Session::Select app} {args} {
 	global cAppPaths
 
-	if {$args != {}} {
-		set cAppPaths [lindex $args 0]
+	if {$args ne {}} {
+		set cAppPaths $args
 	} {
 		set cAppPaths [dlgSelectAppFiles [mc {You can select multiple files or folders}]]
 	}
 
 	set cAppPaths [lsort $cAppPaths]
 	filterAndLoad $cAppPaths
-	if {$cAppPaths == {}} return
 }
 
 plugin {Select app recent} {} {
@@ -166,7 +187,7 @@ plugin {Select app recent} {} {
 
 	foreach label [Session::getRecentSessionNames] apkList $::hist(recentApk) {
 		$m add command -label $label \
-			-command [namespace code [list {Session::Select app} $apkList]]
+			-command [namespace code [list {Session::Select app} {*}$apkList]]
 	}
 
 	tk_popup .recentPop [winfo pointerx .] [winfo pointery .]

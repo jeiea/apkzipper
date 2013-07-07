@@ -1,0 +1,58 @@
+package require tcltest
+
+namespace eval ::test::Plugins {
+	namespace import ::tcltest::*
+	variable RedirectStdout {
+		variable chDebug $::wrDebug
+		set wrDebug stdout
+	}
+	variable CleanupRedirect {
+		variable chDebug
+		set $::wrDebug $chDebug
+	}
+
+	test SelectApp {Execute plugin} -body {
+		{::Select app} business {D:/workspace/Apkz/mod ding/GalaxyS2M250K/SystemUI.apk}
+		return prefix$::cAppPaths
+	} -result {prefix{D:/workspace/Apkz/mod ding/GalaxyS2M250K/SystemUI.apk}}
+
+	test AutoDecompile {Check install framework and decompile} -setup {
+		foreach apkPath $::cAppPaths {
+			getNativePathArray $apkPath cApp
+			removeDirectory $cApp(proj)
+		}
+	} -body {
+		coroutine test[generateID] ::Session::TraverseCApp {::Auto decompile}
+		return [file exist [file join $cApp(proj) apktool.yml]]
+	} -result 1
+	
+	test Deodex {Check complete deodex} -setup {
+		getNativePathArray [lindex $::cAppPaths 0] cApp
+		removeDirectory $cApp(deoDir)
+	} -body {
+		coroutine test[generateID] ::Session::TraverseCApp {::Deodex}
+		return [file exist $cApp(deoDir)]
+	} -result 1
+	
+	test Pack {Check compile and dex} -setup {
+		getNativePathArray [lindex $::cAppPaths 0] cApp
+		removeDirectory $cApp(unsigned)
+	} -body {
+		coroutine test[generateID] ::Session::TraverseCApp {::Pack}
+		return [file exist $cApp(unsigned)]
+	} -result 1
+	
+	test Sign {Check signing} -setup {
+		getNativePathArray [lindex $::cAppPaths 0] cApp
+		removeDirectory $cApp(unsigned)
+	} -body {
+		coroutine test[generateID] ::Session::TraverseCApp {::Pack}
+		return [file exist $cApp(unsigned)]
+	} -result 1
+	
+	test pngWorker {png Optimize worker element} -body {
+		
+	} -result 1
+	cleanupTests
+}
+namespace delete ::test::Plugins
