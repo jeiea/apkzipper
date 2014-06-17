@@ -13,37 +13,35 @@ proc WinADB::adb args {
 	set processNames [lmap pid [twapi::get_process_ids] {twapi::get_process_name $pid}]
 	if [expr {{adb.exe} ni $processNames}] {
 		puts $::wrInfo [mc {Initializing ADB...}]
+		# ... 는 훼이크;; 안 켜져 있으면 알아서 켜주고 이건 그냥 나중에 꺼주는 구문.
+		# 안 넣으면 임시파일이 삭제가 안 되고 설정 저장 안 됨.
+		bind MAINWIN <Destroy> "WinADB::adb kill-server;[bind MAINWIN <Destroy>]"
 	}
-	
-	global adbout adberr
+
+	global adbout
 	set adbout {}
-	set adberr {}
-	proc ::predADBout {chan} {
-		set data [read $chan]
+	proc ::pushADBout {chan} {
+		regsub -all {\n\n} [read $chan] "\n" data
 		append ::adbout $data
 		puts -nonewline $::wrDebug $data
 	}
-	proc ::predADBerr {chan} {
-		set data [read $chan]
+	proc ::pushADBerr {chan} {
+		regsub -all {\n\n} [read $chan] "\n" data
 		append ::adbout $data
 		puts -nonewline $::wrError $data
 	}
 	set outchan [tcl::chan::fifo]
 	set errchan [tcl::chan::fifo]
-#	set outvar [tcl::chan::variable ::adbout]
-#	set errvar [tcl::chan::variable ::adbout]
-#	set outchan [tcl::transform::observe $::wrDebug $outvar {}]
-#	set errchan [tcl::transform::observe $::wrError $errvar {}]
 	chan configure $outchan -blocking false -buffering none
 	chan configure $errchan -blocking false -buffering none
-	chan event $outchan readable [list predADBout $outchan]
-	chan event $errchan readable [list predADBerr $errchan]
+	chan event $outchan readable [list pushADBout $outchan]
+	chan event $errchan readable [list pushADBerr $errchan]
 	bgopen -outchan $outchan -errchan $errchan [getVFile adb.exe] {*}$args
-	predADBout $outchan
-	predADBerr $errchan
+	pushADBout $outchan
+	pushADBerr $errchan
 	close $outchan
 	close $errchan
-
+	
 	# 여기서 모든 에러를 총괄한다는 걸로. Install에러 Uninstall에러 각각 넣으면 귀찮으니까.
 	# 저 adbErrMap을 쓰면 될 듯
 	variable adbErrMap

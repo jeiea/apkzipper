@@ -27,16 +27,23 @@ proc getVFile args {
 	if ![info exist virtualTmpDir] {
 		close [file tempfile virtualTmpDir]
 		file delete -force $virtualTmpDir
-		file mkdir $virtualTmpDir
+		set virtualTmpDir [file join [file dirname $virtualTmpDir] AppzTmpBin]
 	}
+	# 도중에 임시폴더가 삭제된 경우 대비
+	file mkdir $virtualTmpDir
+
 	if ![llength $args] {return $virtualTmpDir}
 
 	set fileName [lindex $args 0]
 	set realFile [file join $virtualTmpDir $fileName]
 	set virtualFile [file join $::vfsRoot binaries $fileName]
 
-	if { ![file exist $realFile] && [file exist $virtualFile] } {
-		file copy -force $virtualFile $realFile 
+	if [file exists $virtualFile] {
+		if {![file exists $realFile] ||
+			[file size $realFile] != [file size $virtualFile]
+		} {
+			file copy -force $virtualFile $realFile
+		}
 	}
 	return $realFile}
 
@@ -116,6 +123,7 @@ oo::class create Plugin {
 	}
 }
 
+# 버튼으로 넣기 위한 밑작업을 넣은 함수를 생성
 proc plugin args {
 	Plugin create {*}$args
 }

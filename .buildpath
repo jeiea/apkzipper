@@ -3,7 +3,7 @@
 	<buildpathentry excluding="ApkzMain.vfs - 복사본/|ApkzMain.vfs - 복사본/binaries/|ApkzMain.vfs - 복사본/lib/|ApkzMain.vfs - 복사본/lib/app-ApkzMain/|ApkzMain.vfs - 복사본/lib/app-ApkzMain/locale/" kind="src" path=""/>
 	<buildpathentry kind="con" path="org.eclipse.dltk.launching.INTERPRETER_CONTAINER">
 		<attributes>
-			<attribute name="auto_dependencies" value="BWidget|TclOO|Thread|Tk|Ttk|crc32|http|log|logger|metoo|msgcat|registry|starkit|tcltest|tls|twapi_account|twapi_apputil|twapi_base|twapi_clipboard|twapi_com|twapi_console|twapi_crypto|twapi_device|twapi_etw|twapi_eventlog|twapi_input|twapi_msi|twapi_mstask|twapi_multimedia|twapi_namedpipe|twapi_network|twapi_nls|twapi_os|twapi_pdh|twapi_power|twapi_printer|twapi_process|twapi_rds|twapi_resource|twapi_security|twapi_service|twapi_share|twapi_shell|twapi_storage|twapi_synch|twapi_ui|twapi_winsta|twapi_wmi"/>
+			<attribute name="auto_dependencies" value="BWidget|TclOO|Thread|Tk|Ttk|http|log|logger|msgcat|registry|starkit|tcltest|tls"/>
 		</attributes>
 	</buildpathentry>
 </buildpath>

@@ -1,0 +1,66 @@
+package require tcltest
+
+namespace eval ::test::Snippet {
+	namespace import ::tcltest::*
+	variable RedirectStdout {
+		variable chDebug $::wrDebug
+		set wrDebug stdout
+	}
+	variable CleanupRedirect {
+		variable chDebug
+		set $::wrDebug $chDebug
+	}
+	# proj와 path를 옮기든지 해야지 원...
+	variable tempFolder [file normalize [file join $::env(TEMP) AppzTmpBin]]
+	
+	proc CleanupTemp {} {
+		variable tempFolder
+		file delete -force $tempFolder
+	}
+
+	test [generateID] {test getVFile adb.exe} {
+		set adbPath [getVFile adb.exe]
+		return [file_equal $adbPath $::vfsRoot/binaries/adb.exe]
+	} 1
+	
+	test [generateID] {Check virtual file copied correctly} {
+		unset ::virtualTmpDir
+		set inADB [file join $::vfsRoot binaries adb.exe]
+		set outADB [getVFile adb.exe]
+		return [file_equal $inADB $outADB]
+	} 1
+	 
+	test [generateID] {Check virtual path generated correctly} {
+		return [file normalize [getVFile log.txt]]
+	} [file normalize $::env(TEMP)/AppzTmpBin/log.txt]
+	
+	test [generateID] {Query for targetted API level: original apk} {
+		return [queryApiLevel [lindex $::cAppPaths 0]]
+	} 16
+	
+	test [generateID] {Query for targetted API level: apktool.yml} -setup {
+		set backupDir [makeDirectory QueryTest[generateID]]
+		file rename [lindex $::cAppPaths 0] $backupDir
+	} -body {
+		return [queryApiLevel [lindex $::cAppPaths 0]]
+	} -cleanup {
+		file rename [glob -directory $backupDir *] [file dirname [lindex $::cAppPaths 0]]
+	} -result 16
+
+	test [generateID] {Query for targetted API level: encoded manifest.xml} \
+	-constraints incompletetest -setup {
+		coroutine test[generateID] ::Session::TraverseCApp {::Extract}
+		set backupDir [makeDirectory QueryTest[generateID]]
+		file rename [lindex $::cAppPaths 0] $backupDir
+	} -body {
+		return [queryApiLevel [lindex $::cAppPaths 0]]
+	} -cleanup {
+		file rename [glob -directory $backupDir *] [file dirname [lindex $::cAppPaths 0]]
+	} -result 16
+	
+	test [generateID] {Show update info with downgradable link} {
+		coroutine na ListAndConfirmDlg {asdf} {a b c} {1 2 3 4 5 6}
+	} 1
+	cleanupTests
+}
+namespace delete ::test::Snippet

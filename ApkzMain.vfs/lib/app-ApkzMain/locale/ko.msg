@@ -13,6 +13,10 @@ mcset ko Confirm 확인
 mcset ko Processing {처리 중...}
 mcset ko {Error} 에러
 mcset ko {ERROR} {에러}
+mcset ko {Log level:} {기록 수준:}
+mcset ko {Debug} {디버그}
+mcset ko {Info} {정보}
+mcset ko {Warning} {경고}
 mcset ko {Success.} 성공.
 mcset ko {Failed.} 실패.
 mcset ko {Yes} 예
@@ -40,7 +44,7 @@ mcset ko {Ziplevel 9}		{9 (최고 압축)}
 mcset ko {Decompile target}	{디컴파일 대상}
 mcset ko {Sources}			{소스만}
 mcset ko {Resources}		{리소스만}
-mcset ko {Both}      		{둘 다}
+mcset ko {Both}      		{소스와 리소스}
 mcset ko {The others}		{나머지만}
 mcset ko {ADB Shell}		{ADB Shell}
 mcset ko {Take phone log}	{폰 로그 가져오기}
@@ -202,6 +206,7 @@ mcset ko {Change to manual mode} {수동 모드로 전환}
 mcset ko {Pack} {앱파일 만들기}
 mcset ko {detailView} {수동모드로 전환(&M)}
 mcset ko {simpleView} {간단모드로 전환(&M)}
+mcset ko {tutorialView} {튜토리얼모드로 전환(&M)}
 mcset ko {Complete.} {완료.}
 mcset ko {Import} {불러오기}
 mcset ko {Modify and pack} {수정하고 싸매기}
@@ -253,7 +258,6 @@ mcset ko {Install .apk file to a device.
 System app maybe cannot.} {조립한 앱을 폰에 설치합니다.
 시스템 앱은 아마 불가능합니다.}
 mcset ko {Send file to a device.} {조립한 앱을 폰에 전송합니다.}
-mcset ko {tutorialView} {튜토리얼모드로 전환(&M)}
 mcset ko {Initializing ADB...} {ADB 시동 중...}
 mcset ko {Save To Log} {에러메시지 저장}
 mcset ko {OK} {확인}
@@ -265,12 +269,11 @@ mcset ko {Log Files} {로그 파일}
 mcset ko {Text Files} {텍스트 파일}
 mcset ko {All Files} {모든 파일}
 mcset ko {Select Log File} {로그파일 경로를 선택해주세요}
-mcset ko {&Reset config} {설정 초기화(&R)}
+mcset ko {&Reset config/history} {설정/히스토리 초기화(&R)}
 mcset ko {Configuration is set to default.} {설정이 초기화되었습니다.}
 mcset ko {simpleView is incomplete feature. Avoid to use it.} {간단모드는 미완성 기능입니다. 안 쓰는 게 좋을 거예요.}
 mcset ko {Unsigned file not found.} {사인할 파일이 없습니다.}
 mcset ko {It seems to be signed already.} {이미 사인이 된 것 같습니다.}
-mcset ko {API Level detection failed. Default value applied.} {API레벨 감지에 에러가 발생했습니다. 기본값이 적용됩니다.}
 mcset ko {Supported command:} {쓸 수 있는 명령어: 설명}
 mcset ko {push [<remote path>]} {push [<폰 경로>]: 선택한 앱을 지정한 경로로 전송합니다.}
 mcset ko {push <local> <remote>} {push <로컬 경로> <폰 경로>: 지정한 폴더 및 파일을 전송합니다.}
@@ -280,13 +283,35 @@ mcset ko {Numbers written in detail view are accepted.} {수동모드에 있는 
 mcset ko {shell, connect, exit} {shell, connect, exit}
 mcset ko {Successfully system compiled.} {시스템컴파일 되었습니다.}
 mcset ko {Bug report} {버그 리포트}
-mcset ko {Textbox's verbose message appeared.} {세부로그를 나타나게 했습니다.}
-mcset ko {Recorded report and textbox log will be sent intact.} {방금 뜬 웹 페이지랑 지금 보이는 로그가 그대로 전송됩니다.}
-mcset ko {Are you OK?} {전송하시겠습니까?}
+mcset ko {Are you OK?} {괜찮겠습니까?}
 mcset ko {Report file has been sent.} {리포트 파일이 전송되었습니다.}
-mcset ko {Textbox log will be sent intact.} {지금 보이는 로그가 그대로 전송됩니다.}
 mcset ko {Cannot connect to server.} {서버 접속에 실패해 리포트하지 못했습니다.}
 mcset ko {Auto decompile} {프레임워크 설치와 디컴파일}
 mcset ko {Connected.} {연결되었습니다.}
 mcset ko {Already connected.} {이미 연결되어있습니다.}
 mcset ko {Failed to connect.} {연결하지 못했습니다.}
+mcset ko {%s is already optimized.} {%s는 이미 최적화되어 있습니다.}
+mcset ko {%1$s is %2$s compressed.} {%1$s가 %2$s더 압축되었습니다.}
+mcset ko {Ziplevel:} {압축세기:}
+mcset ko {Decompile target:} {디컴파일 대상:}
+mcset ko {Config} {설정}
+mcset ko {Cancel} {취소}
+mcset ko {Reset to previous} {되돌리기}
+mcset ko {Auto update} {자동 업데이트}
+mcset ko {&Configuration} {설정(&C)}
+mcset ko {Can't locate needed resource} {필요한 파일들을 찾을 수 없습니다}
+mcset ko {How about copy /system/framework folder to path where .apk file exists?} {/system/framework폴더를 앱 파일이 있는 폴더에 복사해보고 
+상단메뉴에서 간단모드로 들어가 '프레임워크 설치와 디컴파일'하면 될지도 모릅니다.}
+mcset ko {This error is unfamiliar. Please report as bug.} {처음보는 에러입니다. 버그리포트 대상 ㅇㅅㅇ}
+mcset ko {You can record process invoking problem.} {문제 발생 과정을 녹화할 수 있습니다. 그냥 넘어갈 수도 있지만...}
+mcset ko {This archive file will be sent intactly.} {이 압축파일을 그대로 보냅니다.}
+mcset ko {You can add some attachment at this step.} {지금 추가로 첨부할 파일을 넣어도 됩니다.}
+mcset ko {Will you send it?} {이 버그리포트 파일을 보낼까요?}
+mcset ko {Operation to other extension} {다른 확장자파일 추가여부}
+mcset ko {Ask} {물어보기}
+mcset ko {Cannot detect api level. Default value applied.} {API레벨 감지에 실패했습니다. 기본값이 적용됩니다.}
+mcset ko {Operation to other extension:} {다른 확장자를 가진 파일 처리:}
+mcset ko {Executable directory} {실행파일 폴더}
+mcset ko {Apk directory} {앱 파일 폴더}
+mcset ko {Project location:} {projects 폴더 위치:}
+mcset ko {Can't locate needed file: %s} {필요한 파일이 없습니다: %s}

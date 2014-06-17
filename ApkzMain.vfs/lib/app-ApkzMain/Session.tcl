@@ -129,7 +129,7 @@ proc Session::getRecentSessionNames {} {
 
 proc Session::filterAndLoad paths {
 	set qualified [list]
-	set reply $::config(askExtension)
+	set reply $::config(permitExtension)
 
 	foreach path $paths {
 		if ![file readable $path] {

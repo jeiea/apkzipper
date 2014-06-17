@@ -5,6 +5,7 @@ package require tkdnd
 
 namespace eval View {
 	namespace export TraverseCApp
+	variable logLevels {Error Warning Info Debug Verbose}
 	variable currentOp ""
 	variable cappLabel ""
 	variable tCon
@@ -88,10 +89,16 @@ proc View::bottomPane.generate {} {
 
 	variable tCon $frame.tCmd
 
-	foreach ideal {"³ª´®°íµñÄÚµù" "¸¼Àº °íµñ" "Consolas" "µ¸¿òÃ¼"} {
-		if {[lsearch -exact [font families] $ideal] != -1} {
-			$tCon config -font [list $ideal 9]
-			break
+	# ÅØ½ºÆ®»óÀÚ ÆùÆ® Á¤ÇÏ±â
+	if {$::config(preferedFont) ne {}} {
+		$tCon config -font [font actual $::config(preferedFont)]
+	} {
+		set fontFamilies [concat $::config(preferedFont) [font families]]
+		foreach ideal {"³ª´®°íµñÄÚµù" "¸¼Àº °íµñ" "Consolas" "µ¸¿òÃ¼" "Verdana"} {
+			if {[lsearch -exact $fontFamilies $ideal] != -1} {
+				$tCon config -font [font actual [list $ideal 9]]
+				break
+			}
 		}
 	}
 
@@ -106,7 +113,7 @@ proc View::bottomPane.generate {} {
 
 	proc ::bgerror msg {
 		puts $::wrError $msg
-		puts $::wrVerbose "$::errorCode: $::errorInfo"
+		puts $::wrVerbose "<bgerror>$::errorCode: $::errorInfo</bgerror>"
 	}
 
 	$tCon tag config Error -foreground red
@@ -333,16 +340,16 @@ proc View::detailView.generate {} {
 }
 
 proc View::textcon.verbose {level} {
-	set levels {Error Warning Info Debug Verbose}
+	variable logLevels {Error Warning Info Debug Verbose}
 
-	if {$level ni $levels} {
+	if {$level ni $logLevels} {
 		error {verbose level incorrect} "$level is not supported level." \
 			{CustomError NotSupportedLevel}
 	}
 
 	variable tCon
 	set overlevel false
-	foreach tag $levels {
+	foreach tag $logLevels {
 		$tCon tag config $tag -elide [expr ($overlevel) ? true : false]
 		if {$level eq $tag} {
 			set overlevel true
@@ -467,8 +474,6 @@ proc View::menu.attach {} {
 		{&Config}		[set mConfig	[menu .mbar.config]			] \
 		{&SDK Function}	[set mSdk		[menu .mbar.sdk]			] \
 		{&Etc Function}	[set mEtc		[menu .mbar.etc -tearoff 0]	] \
-		{Zip level}						[menu $mConfig.zlevel -tearoff 0] \
-		{Decompile target}				[menu $mConfig.target -tearoff 0] \
 	] {
 		[winfo parent $menu] add cascade {*}[menuUnderline [mc $label]] -menu $menu
 	}
@@ -477,19 +482,10 @@ proc View::menu.attach {} {
 	.mbar add command {*}[menuUnderline [mc $label]] \
 		-command {.mbar entryconf 4 {*}[::View::menuUnderline [mc [::View::switchView]]]}
 
-
-	foreach idx [seq 10] {$mConfig.zlevel add radiobutton \
-			-label [mc "Ziplevel $idx"] -value $idx -variable ::config(zlevel)}
-	foreach {label opt} [list	\
-		{Sources}		{-r   } \
-		{Resources}		{-s   } \
-		{Both}			{     } \
-		{The others}	{-r -s} \
-	] {
-		$mConfig.target add radiobutton -label [mc $label] \
-			-variable ::config(decomTargetOpt) -value $opt
+	$mConfig add command {*}[menuUnderline [mc {&Configuration}]] -command {
+		::Config::showDialog
 	}
-	$mConfig add command {*}[menuUnderline [mc {&Reset config}]] -command {
+	$mConfig add command {*}[menuUnderline [mc {&Reset config/history}]] -command {
 		array unset ::config
 		array set ::config [array get ::configDefault]
 		array unset ::hist

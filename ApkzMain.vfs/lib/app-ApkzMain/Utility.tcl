@@ -85,15 +85,18 @@ if {$tcl_platform(platform) == {windows}} {
 
 		foreach ch {out err} {
 #			refchan doesn't have OS handle, so mediate channel required.
+			# 이건 ADB에서만 써야 함. 일반화 시키려면 저 encoding과 translation이 심히 걸림.
 			if ![string match file* $w($ch)] {
 				set dest $w($ch)
 				lassign [chan pipe] r($ch) w($ch)
-				chan configure $r($ch) -blocking false -buffering line
-				chan configure $w($ch) -blocking false -buffering line
-				chan event $r($ch) readable "puts -nonewline {$dest} \[read {$r($ch)}\]"
+				chan configure $r($ch) -blocking false -buffering line -encoding utf-8
+				chan configure $w($ch) -blocking false -buffering line -encoding utf-8
+				append flushPhrase "puts -nonewline {$dest} \[read {$r($ch)}\];"
+				chan event $r($ch) readable $flushPhrase
 			}
 		}
 
+		puts $::wrVerbose $cmdline
 		set pid [exec -- {*}$cmdline >@ $w(out) 2>@ $w(err) &]
 		
 		set hProc [twapi::get_process_handle $pid -access generic_all]
@@ -107,11 +110,13 @@ if {$tcl_platform(platform) == {windows}} {
 		}
 		unset ::bgAlive($pid)
 		
+		append flushPhrase "chan flush $w(out); chan flush $w(err);"
+		eval $flushPhrase
 		foreach ch {out err} {
 			if [info exists r($ch)] {
 				chan configure $w($ch) -blocking true
-				chan close $w($ch)
 				chan configure $r($ch) -blocking true
+				chan close $w($ch)
 				chan close $r($ch)
 			}
 		}
@@ -168,7 +173,8 @@ proc seq args {
 	set res {}
 	switch [llength $args] {
 	1 {
-		for {set i 0} {$i < $args} {incr i} {lappend res $i}
+		lassign $args end
+		for {set i 0} {$i < $end} {incr i} {lappend res $i}
 		return $res
 	}
 	2 {
@@ -326,4 +332,12 @@ proc modeless_dialog args {
 	return [tk_dialog {*}$args]
 }
 
+proc coproc {name arg body} {
+	proc $name $arg [format {
+		coroutine "%s[generateID]" apply [list %s]
+	} [namespace tail $name] [list $arg $body]]
+}
 
+proc procname {} {
+	return [lindex [info level -1] 0]
+}

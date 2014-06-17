@@ -50,9 +50,32 @@ namespace eval ::test::Plugins {
 		return [file exist $cApp(unsigned)]
 	} -result 1
 	
-	test pngWorker {png Optimize worker element} -body {
-		
-	} -result 1
+	test [generateID] {Whole PNG optimization integrity check} {
+		getNativePathArray [lindex $::cAppPaths 0] cApp
+		set alreadyOptimizedSample {D:\workspace\Apkz\Release\test\SystemUI.apk\res}
+		foreach original	[scan_dir $cApp(proj)\\res *.png] \
+				ideal		[scan_dir $alreadyOptimizedSample *.png] {
+			if ![file_equal $original $ideal] {
+				set diff 1
+				break
+			}
+		}
+		if ![info exists diff] {
+			return 3
+		}
+		coroutine test[generateID] ::Session::TraverseCApp {::Optimize png}
+		set diff 0
+		foreach original	[scan_dir $cApp(proj)\\res *.png] \
+				ideal		[scan_dir $alreadyOptimizedSample *.png] {
+			if ![file_equal $original $ideal] {
+				set diff 1
+				break
+			}
+		}
+		return $diff
+	} 0
+	
+
 	cleanupTests
 }
 namespace delete ::test::Plugins

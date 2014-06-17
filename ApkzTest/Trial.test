@@ -1,0 +1,27 @@
+package require tcltest
+
+namespace eval ::test::Snippet {
+	namespace import ::tcltest::*
+	# proj와 path를 옮기든지 해야지 원...
+	variable tempFolder [file normalize [file join $::env(TEMP) AppzTmpBin]]
+	
+	proc CleanupTemp {} {
+		variable tempFolder
+		file delete -force $tempFolder
+	}
+
+	test [generateID] {Show update info with downgradable link} {
+		coroutine na eval {
+			set ::ans [ListAndConfirmDlg {asdf} {a b c} {1 2 3 4 5 6}]
+			set ::upcheckFinished a
+		}
+		vwait ::upcheckFinished
+		set ret $::ans
+		unset ::ans
+		unset ::upcheckFinished
+		return $ret
+	} {1 2 3}
+
+	cleanupTests
+}
+namespace delete ::test::Snippet

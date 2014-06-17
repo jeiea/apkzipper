@@ -1,17 +1,11 @@
-.buildpath
-.git
-.gitignore
-.project
-.settings
 Analyze
-binaries
+/binaries
 modding
-modding_
 place-apk-here-for-modding
 projects
 Release
 test.vfs
-ApkzMain.vfs/binaries
 collection
-samples
-mod ding
+/samples
+*.log
+*.ini

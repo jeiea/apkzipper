@@ -1,29 +1,63 @@
-foreach jarfile {signapk baksmali smali} {
-	eval [format {
-		proc %1$s args {
-			return [Java -jar [getVFile %1$s.jar] {*}$args]
-	}} $jarfile]
+foreach jarfile {apktool signapk baksmali smali} {
+	proc $jarfile args [format {
+		set listener javaListener[generateID]
+		set ::javaAtom($listener) {}
+		set ::hasErr false
+	
+		proc $listener {chan} {
+			set data [read $chan]
+			append ::javaAtom([procname]) $data\n
+		
+			foreach line [split $data \n] {
+				if [string is space $line] continue
+				if [string match Excep* $line]||[string match -nocase error]||$::hasErr {
+					puts $::wrError $line
+					set ::hasErr true
+				} elseif [string match W:* $line] {
+					puts $::wrWarning $line
+					} {
+					puts $::wrDebug $line
+				}
+			}
+		}
+	
+		set result [tcl::chan::fifo]
+		chan configure $result -blocking false -buffering none
+		chan event $result readable [list $listener $result]
+		try {
+			set exitcode [bgopen -chan $result [Java] -jar [getVFile %1$s.jar] {*}$args]
+		} on error {msg info} {
+			$listener $result
+			javaExceptionDetector $::javaAtom($listener)
+			error $msg $info
+		} finally {
+			$listener $result
+			close $result
+			array unset ::javaAtom $listener
+			rename $listener {}
+		}
+		return $exitcode
+	} $jarfile]
 }
 
-proc apktool args {
-	set ::hasErr false
-	proc pred {chan} {
-		set line [gets $chan]
-		if [string match Excep* $line]||[string match -nocase error]||$::hasErr {
-			puts $::wrError $line
-			set ::hasErr true
-		} elseif [string match W:* $line] {
-			puts $::wrWarning $line
-		} {
-			puts $::wrDebug $line
+proc javaExceptionDetector {log} {
+	# baksmali error
+	if [regexp -line {.*Cannot locate boot class path file (.*)} $log {} {dependancy}] {
+		puts $::wrError [mc {Can't locate needed file: %s} $dependancy]
+		return
+	}
+	switch -glob -- $log {
+		*brut.androlib.err.UndefinedResObject*
+		{
+			# apktool decompile error
+			puts $::wrError [mc {Can't locate needed resource}]
+			puts $::wrError [mc {How about copy /system/framework folder to path where .apk file exists?}]
+		}
+		default
+		{
+			puts $::wrError [mc {This error is unfamiliar. Please report as bug.}]
 		}
 	}
-	set result [tcl::chan::fifo]
-	chan configure $result -blocking false -buffering line
-	chan event $result readable [list pred $result]
-	set exitcode [bgopen -chan $result [Java] -jar [getVFile apktool.jar] {*}$args]
-	close $result
-	return $exitcode
 }
 
 foreach exefile {fastboot 7za aapt zipalign jd-gui} {
@@ -33,19 +67,22 @@ foreach exefile {fastboot 7za aapt zipalign jd-gui} {
 	}} $exefile]
 }
 
-proc predPNGout {chan} {
+proc pushPNGout {chan png} {
 	set data [read $chan]
 	puts -nonewline $::wrDebug $data
+	if [regexp -line {^.* is already optimized.$} $data] {
+		puts $::wrInfo [mc {%s is already optimized.} $png]
+	} elseif [regexp -line {^Output file size = \d* bytes \(\d* bytes = ([\d.%]*) decrease\)$} $data {} percentage] {
+		puts $::wrInfo [mc {%1$s is %2$s compressed.} $png $percentage]
+	}
 }
 
 proc optipng args {
 	set outchan [tcl::chan::fifo]
 	chan configure $outchan -blocking false -buffering none
-	chan event $outchan readable [list predPNGout $outchan]
-#	bgopen -chan $outchan [getVFile optipng.exe] {*}$args
+	chan event $outchan readable [list pushPNGout $outchan [file tail [lindex $args 0]]]
 	lassign [chan pipe] r w
 	chan configure $r -blocking false -buffering none
-	chan configure $w -blocking false -buffering none
 	chan event $r readable "puts -nonewline $outchan \[read $r]"
 	return [exec -- [getVFile optipng.exe] {*}$args >@ $w 2>@ $w &]
 }
@@ -130,9 +167,10 @@ plugin Zip apkPath {
 		return
 	}
 
+	# 7za a는 파일이 이미 있으면 추가하기 때문에 미리 지우고, 자바소스파일은 빼고압축
 	puts $::wrInfo [mc Compressing...]
 	file delete -- $cApp(unsigned)
-	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\*
+	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\* -x!classes.jar
 	puts $::wrInfo [mc Compressed.]
 }
 
@@ -207,42 +245,13 @@ plugin {Optimize png} apkPath {
 	set pngFiles [lsearch -all -inline -not [scan_dir $cApp(proj) *.png] *$cApp(name)/build/*]
 	set workers  [expr {int($::env(NUMBER_OF_PROCESSORS) * 1.4)}]
 	
-	# Make coroutine generator.
-#	coroutine ::pngDeployer apply {{pngFiles mainRoutine} {
-#		yield
-#		foreach png $pngFiles {
-#			puts deploy:$png
-#			yield $png
-#		}
-#		$mainRoutine
-#	}} $pngFiles [info coroutine]
-	
 	puts $::wrInfo [mc {Picture optimizing...}]
 	
 	foreach png $pngFiles {
-		optipng $png
+		optipng [AdaptPath $png]
 		update
 	}
-#	# Make and initiate coroutine workers.
-#	for {set i 0} {$i < $workers} {incr i} {
-#		puts "worker gen $i"
-#		coroutine ::pngWorker($i) eval { while 1 {
-#			set png [::pngDeployer]
-#			if {$png eq {}} return
-#
-#			set pid [optipng $png]
-#			set handle [::twapi::get_process_handle $pid -access generic_all]
-#			set asyncBody [format {
-#			} $handle [info coroutine]]
-#			puts "asyncBody: $asyncBody"
-#			::twapi::wait_on_handle $handle -executeonce 1 \
-#				-async "::twapi::close_handle {$handle}; {[info coroutine]};#" 
-#			yield
-#		}}
-#	}
-	puts "worker generation finished"
-#	yield
-	puts "all finished"
+
 	puts $::wrInfo [mc {Picture optimization finished.}]
 }
 
@@ -265,6 +274,7 @@ proc globFilter {args} {
 	return $ret
 }
 
+# return: Only selected row list. Empty string will be returned when canceled.
 proc ListAndConfirmDlg {msg cols items} {
 	set top [toplevel .deleteConfirm[generateID]]
 	wm title $top [mc {Confirm}]
@@ -272,9 +282,9 @@ proc ListAndConfirmDlg {msg cols items} {
 	set msglbl [ttk::label $top.msg -text $msg]
 	set scroll [ttk::scrollbar $top.scroll -command "$top.list yview"]
 	set footer [ttk::frame $top.foot]
-	set yes [ttk::button $footer.yes -text [mc {Yes}] -command "[info coroutine] true"]
-	set no  [ttk::button $footer.no  -text [mc {No}] -command [list destroy $top]]
 	set listbx [ttk::treeview $top.list -yscroll "$scroll set" -show headings -column $cols]
+	set yes [ttk::button $footer.yes -text [mc {Yes}] -command [list [info coroutine] true]]
+	set no  [ttk::button $footer.no  -text [mc {No}] -command [list destroy $top]]
 	foreach col $cols {
 		$listbx heading $col -text $col -anchor w
 		$listbx column $col -width [expr [font measure TkDefaultFont $col] + 5]
@@ -302,12 +312,15 @@ proc ListAndConfirmDlg {msg cols items} {
 	
 	bind $top <Escape> [list destroy $top]
 	bindtags $top onDestroy$top
-	bind onDestroy$top <Destroy> "[info coroutine] false"
+	bind onDestroy$top <Destroy> [info coroutine]
 
 	raise $top
 	focus $no
 
 	set ret [yield]
+	if {$ret eq {true}} {
+		set ret [$listbx set [$listbx selection]]
+	}
 
 	if [winfo exists $top] {
 		bind onDestroy$top <Destroy> {}
@@ -378,6 +391,80 @@ proc {Clean folder} detail {
 	}
 	
 	puts $::wrInfo [mc {%d items are deleted.} $count]
+}
+
+plugin {Check update2} {} {
+	set ::currentOp {update}
+	set exit {set ::currentOp ""; return}
+	set updateFileSignature {Apkz Update Information File}
+
+	puts $::wrInfo [mc {Checking update..}]
+
+	set updateinfo [httpcopy http://db.tt/v7qgMqqN]
+	if ![string match $updateFileSignature* $updateinfo] {
+		puts $::wrInfo [mc {Update info not found. Please check website.}]
+		eval $exit
+	}
+
+	set updateinfo [string map [list $updateFileSignature {}] $updateinfo]
+
+	set changelog {}
+	set ret [catch {
+		foreach ver [dict keys $updateinfo] {
+			if {[package vcompare $ver $::apkzver] != 1} continue
+
+			append changelog $ver
+			if [dict exist $updateinfo $ver distgrade] {
+				append changelog " [dict get $updateinfo $ver distgrade]"
+			}
+			append changelog \n
+			if [dict exist $updateinfo $ver description] {
+				append changelog [dict get $updateinfo $ver description]\n
+			}
+			if {[llength [split $changelog \n]] > 11} {
+				append changelog ...
+				break
+			}
+			append changelog \n
+		}
+
+		set latestver 0
+		foreach ver [dict keys $updateinfo] {
+			if {[package vcompare $ver $latestver] == 1} {
+				set latestver $ver
+			}
+		}
+
+		if {[package vcompare $latestver $::apkzver] != 1} {
+			puts $::wrInfo [mc {There are no updates available.}]
+			return
+		}
+
+		set ans [tk_dialog .updateDlg [mc {New version found!}] \
+			"[mc {Do you want to update?}]\n\n[string trim $changelog]" \
+			{} [mc Yes] [mc Yes] [mc No]]
+		if {$ans == 1} $exit
+
+		if [dict exist $updateinfo $latestver filename] {
+			set filename [dict get $updateinfo $latestver filename]
+		} {
+			set filename {Apkzipper.exe}
+		}
+		set updatefile [AdaptPath [file normalize "$::exeDir/$filename"]]
+
+		foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
+			set success [catch {httpcopy $downloadurl $updatefile}]
+			if {$success == 0} {
+				catch {exec [auto_execok explorer.exe] [file nativename [file dirname $updatefile]]}
+				break
+			}
+		}
+	} {} errinfo]
+
+	if {$ret == 1} {
+		puts $::wrError "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"
+	}
+	eval $exit
 }
 
 plugin {Check update} {} {
@@ -456,25 +543,57 @@ plugin {Check update} {} {
 	eval $exit
 }
 
-proc queryApiLevel {apkPath} {
-	# Query SDK version from original apk
+# Query targetted API level to raw apk
+proc queryTargettedApiToApk {apkPath} {
 	global manifest
-	set api {}
-	set err [catch {
-	if [file exist $apkPath] {
-		set w [::tcl::chan::variable manifest]
-		bgopen -chan $w -conderror &&0 [getVFile aapt.exe] dump badging $apkPath
-		close $w
-		regexp {targetSdkVersion:'(\d*)'} $manifest] {} api
-		if {$api eq {}} {
-			regexp {sdkVersion:'(\d*)'} $manifest] {} api
-		}
-		unset manifest
-	}}]
+
+	set w [::tcl::chan::variable manifest]
+	set err [catch {bgopen -chan $w -conderror &&0 [getVFile aapt.exe] dump badging $cApp(path)}]
+	close $w
+	
 	if $err {
-		puts $::wrVerbose [mc {API Level detection failed. Default value applied.}]
+		unset manifest
+		return
 	}
+
+	regexp {targetSdkVersion:'(\d*)'} $manifest] {} api
+	if {$api eq {}} {
+		regexp {sdkVersion:'(\d*)'} $manifest] {} api
+	}
+	
+	unset manifest
 	return $api
+}
+
+# Query foundation API level.
+proc queryApiLevel {apkPath} {
+	getNativePathArray $apkPath cApp
+
+	# Query to original apk
+	if [file exists $cApp(path)] {
+		set api [queryTargettedApiToApk $cApp(path)]
+		if {$api ne {}} {return $api}
+	}
+	
+	# Query to apktool.yml
+	if [file exists [file normalize $cApp(proj)/apktool.yml]] {
+		set yml [::yaml::yaml2dict -file [file normalize $cApp(proj)/apktool.yml]]
+		if [dict exists $yml sdkInfo targetSdkVersion] {
+			return [dict get $yml sdkInfo targetSdkVersion]
+		}
+		if [dict exists $yml sdkInfo minSdkVersion] {
+			return [dict get $yml sdkInfo minSdkVersion]
+		}
+	}
+	
+	# Query to project compressed
+	if [file exists $cApp(proj)] {
+		7za a -y -tzip -mx1 [getVFile recovery.apk] $cApp(proj)\\*
+		set api [queryTargettedApiToApk [getVFile recovery.apk]]
+		if {$api ne {}} {return $api}
+	}
+
+	puts $::wrVerbose [mc {Cannot detect api level. Default value applied.} $api]
 }
 
 # smali가 odex의존성 참조경로를 바꾸는 파라미터를 지원하지 않기 때문에 어쩔 수 없이
@@ -547,44 +666,39 @@ proc bugReport {} {
 	set null [tcl::chan::null]
 	set reportFile [file nativename $::exeDir/ApkzBugReport.zip]
 	file delete -force $reportFile
+
+	# Problem steps recorder 실행
 	set psr [auto_execok psr.exe]
 	if {$psr ne {}} {
+		puts $::wrInfo [mc {You can record process invoking problem.}]
 		bgopen -conderror &&0 $psr /output $reportFile /recordpid [pid]
 	}
-	append mes [mc {Textbox's verbose message appeared.}]\n
-	if [file exist $reportFile] {
-		bgopen -outchan $null [getVFile 7za.exe] e -y -o[getVFile] $reportFile
-		file delete -force $reportFile
-		set latestReport [lindex [lsort -decreasing [glob -directory [getVFile] *.mht]] 0]
-		exec {*}[auto_execok start] {} $latestReport
-		append mes [mc {Recorded report and textbox log will be sent intact.}]\n
-	} {
-		append mes [mc {Textbox log will be sent intact.}]\n
-	}
-	append mes [mc {Are you OK?}]
 
+	# 로그파일 생성
 	set tCon .bottomConsole.tCmd
-	$tCon tag config Verbose -elide 0
-	set reply [modeless_dialog .reportConfirm [mc {Bug report}] $mes {} 0 [mc Yes] [mc No]]
+	set log [$tCon get 0.0 end]
+	set logFile [getVFile log.txt]
+	set logHandle [open $logFile w]
+	puts -nonewline $logHandle $log
+	close $logHandle
 
-	$tCon tag config Verbose -elide 1
+	# 로그파일 추가, 버그리포트 파일 실행
+	bgopen -outchan $null [getVFile 7za.exe] a -y -tzip -mx9 $reportFile $logFile
+	exec {*}[auto_execok start] {} $reportFile
+
+	# 전송확인
+	append mes [mc {This archive file will be sent intactly.}]\n
+	append mes [mc {You can add some attachment at this step.}]\n
+	append mes [mc {Will you send it?}]
+	set reply [modeless_dialog .reportConfirm [mc {Bug report}] $mes {} 0 [mc Yes] [mc No]]
 	if $reply return
 
-	set log [$tCon get 0.0 end]
-	set logFile [open [getVFile log.txt] w]
-	puts -nonewline $logFile $log
-	close $logFile
-
-	set reportFile [file rootname $reportFile].7z
-	file delete -force $reportFile
-	set includeMht [expr {[info exist latestReport] ? "-i!$latestReport" : {}}]
-	bgopen -outchan $null [getVFile 7za.exe] a -y -mx9 $reportFile [getVFile log.txt] {*}$includeMht
-
+	# 파일 읽어 보내기
 	set archive [open $reportFile rb]
 	set data [read $archive]
 	close $archive
 	set transErr [catch {http::geturl http://jeiea.dothome.co.kr/bugreport.php \
-		-method POST -query $data -type {application/x-7z-compressed}}]
+		-method POST -query $data -type {application/zip}}]
 	if $transErr {
 		puts $::wrError [mc {Cannot connect to server.}]
 	} {

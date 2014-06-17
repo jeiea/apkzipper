@@ -1,5 +1,0 @@
-ApkZipper changelog
-
-v2.0 beta
-Tcl/Tk GUI version first release
-
