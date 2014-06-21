@@ -15,7 +15,7 @@ proc Java args {
 	if {$args eq {}} {
 		return $javapath
 	} {
-		bgopen $javapath {*}$args
+		bgopen -conderror !=0 $javapath {*}$args
 	}
 }
 

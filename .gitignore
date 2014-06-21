@@ -1,7 +1,7 @@
 *.ini
 *.log
 /analyze
-/binaries
+/dependencies
 /feedback
 /modding
 /projects

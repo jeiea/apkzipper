@@ -1,15 +1,15 @@
-
 # jar파일을 다루는 백엔드 실행파일 함수들
 foreach JarFile {apktool signapk baksmali smali} {
+
 	proc $JarFile args [string map [list @ $JarFile] {
 		set listener javaListener[generateID]
 		set ::javaAtom($listener) {}
 		set ::hasErr false
-	
+
 		proc $listener {chan} {
 			set data [read $chan]
 			append ::javaAtom([procname]) $data\n
-		
+
 			foreach line [split $data \n] {
 				if [string is space $line] continue
 				if [string match Excep* $line]||[string match -nocase error]||$::hasErr {
@@ -22,12 +22,12 @@ foreach JarFile {apktool signapk baksmali smali} {
 				}
 			}
 		}
-	
+
 		set result [tcl::chan::fifo]
 		chan configure $result -blocking false -buffering none
 		chan event $result readable [list $listener $result]
 		try {
-			set exitcode [bgopen -chan $result [Java] -jar [getVFile @.jar] {*}$args]
+			set exitcode [bgopen -conderror !=0 -chan $result [Java] -jar [getVFile @.jar] {*}$args]
 		} on error {msg info} {
 			$listener $result
 			javaExceptionDetector $::javaAtom($listener)
@@ -40,13 +40,18 @@ foreach JarFile {apktool signapk baksmali smali} {
 		}
 		return $exitcode
 	}]
+
 }
 
 # 자바 애플리케이션에서 발생한 예외 중 아는 예외는 따로 정보를 출력해주는 함수
 proc javaExceptionDetector {log} {
 	# baksmali error
-	if [regexp -line {.*Cannot locate boot class path file (.*)} $log {} {dependancy}] {
+	if [regexp -line {.*Cannot locate boot class path file (.*)} $log {} Dependancy] {
 		puts $::wrError [mc {Can't locate needed file: %s} $dependancy]
+		return
+	}
+	if [regexp -line {Input file \((.*)\) was not found or was not readable\.} $log {} Apk] {
+		puts $::wrError [mc {Can't locate needed file: %s} $Apk]
 		return
 	}
 	switch -glob -- $log {
@@ -67,7 +72,7 @@ proc javaExceptionDetector {log} {
 foreach ExeFile {fastboot 7za aapt zipalign jd-gui} {
 	eval [string map [list @ $ExeFile] {
 		proc @ args {
-			return [bgopen [getVFile @.exe] {*}$args]
+			return [bgopen -conderror !=0 [getVFile @.exe] {*}$args]
 		}
 	}]
 }
@@ -94,7 +99,7 @@ proc optipng args {
 	return [exec -- [getVFile optipng.exe] {*}$args >@ $w 2>@ $w &]
 }
 
-# 
+#
 plugin Extract apkPath {
 	getNativePathArray $apkPath cApp
 
@@ -110,7 +115,7 @@ plugin Decompile apkPath {
 	getNativePathArray $apkPath cApp
 
 	puts $::wrInfo [mc {Decompiling...}]
-	apktool d {*}$::config(decomTargetOpt) -f $cApp(path) $cApp(proj)
+	apktool d {*}$::config(decomTargetOpt) -o $cApp(proj) -f $cApp(path)
 	7za x -y -o$cApp(proj) $cApp(path) META-INF -r
 	puts $::wrInfo [mc {Successfully decompiled.}]
 }
@@ -130,7 +135,7 @@ plugin Compile apkPath {
 		puts $::wrInfo [mc {apk compiling...}]
 	}
 
-	apktool b -a [getVFile aapt.exe] $cApp(proj) $cApp(unsigned)
+	apktool b -a [getVFile aapt.exe] -o $cApp(unsigned) $cApp(proj)
 
 	puts $::wrDebug [mc {Adjusting compressing level...}]
 	# INFO: -aoa는 overwrite all destination files이다
@@ -147,7 +152,7 @@ plugin Compile apkPath {
 	file delete -- $cApp(unsigned)
 	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\temp\\*
 	file delete -force -- $cApp(proj)\\temp
-	
+
 	if [regexp {compileRoutine} [info coroutine]] {
 		puts $::wrInfo [mc {Successfully system compiled.}]
 	} {
@@ -157,9 +162,9 @@ plugin Compile apkPath {
 
 plugin {System compile} apkPath {
 	coroutine compileRoutine ::Compile business $apkPath
-	
+
 	puts $::wrDebug [mc {Restoring original resource and manifest...}]
-	
+
 	getNativePathArray $apkPath cApp
 	foreach metafile {resources.arsc AndroidManifest.xml} {
 		7za x -y -aoa -o[file nativename $cApp(proj)/temp] $cApp(path) $metafile
@@ -206,7 +211,7 @@ plugin Sign apkPath {
 		}
 		return
 	}
-	
+
 	if [signapk -w [getVFile testkey.x509.pem] [getVFile testkey.pk8] $cApp(unsigned) $cApp(signed)] {
 		puts $::wrError [mc {Signing failed: %s} $cApp(name)]
 	} {
@@ -252,9 +257,9 @@ plugin {Optimize png} apkPath {
 
 	set pngFiles [lsearch -all -inline -not [scan_dir $cApp(proj) *.png] *$cApp(name)/build/*]
 	set workers  [expr {int($::env(NUMBER_OF_PROCESSORS) * 1.4)}]
-	
+
 	puts $::wrInfo [mc {Picture optimizing...}]
-	
+
 	foreach png $pngFiles {
 		optipng [AdaptPath $png]
 		update
@@ -286,7 +291,7 @@ proc globFilter {args} {
 proc ListAndConfirmDlg {msg cols items} {
 	set top [toplevel .deleteConfirm[generateID]]
 	wm title $top [mc {Confirm}]
-	
+
 	set msglbl [ttk::label $top.msg -text $msg]
 	set scroll [ttk::scrollbar $top.scroll -command "$top.list yview"]
 	set footer [ttk::frame $top.foot]
@@ -317,17 +322,22 @@ proc ListAndConfirmDlg {msg cols items} {
 	pack $footer -side bottom
 	pack $scroll -side right -fill y
 	pack $listbx -side left -expand 1 -fill both
-	
-	bind $top <Escape> [list destroy $top]
+
+	# toplevel 윈도우라 태그를 지정하지 않으면 하위 윈도우 전체에 적용된다.
 	bindtags $top onDestroy$top
+	bind onDestroy$top <Escape> [list destroy $top]
 	bind onDestroy$top <Destroy> [info coroutine]
+	bind $top <Control-a> [list $listbx selection add [$listbx children {}]]
 
 	raise $top
 	focus $no
 
 	set ret [yield]
 	if {$ret eq {true}} {
-		set ret [$listbx set [$listbx selection]]
+		set ret {}
+		foreach Item [$listbx selection] {
+			set ret [concat $ret [$listbx item $Item -values]]
+		}
 	}
 
 	if [winfo exists $top] {
@@ -377,19 +387,20 @@ proc {Clean folder} detail {
 				lappend listItem {}
 			}
 		}
-		set confirm [ListAndConfirmDlg [join [list \
+		set Confirm [ListAndConfirmDlg [join [list \
 			[mc {Are you sure you want to delete these items?}] \
 			[mc {Maybe these are sent to recycle bin.}]] \n] \
 			[list [mc Path] [mc {Is directory?}]] $listItem]
-		if !$confirm return
+		if {$Confirm eq {}} return
 	}
 
 	if [catch {package require twapi_shell}] {
+
 		set delete {file delete -force --}
 	} {
 		set delete {twapi::recycle_file}
 	}
-	
+
 	set count 0
 	foreach {path tag} $listItem {
 		puts $::wrInfo "[mc Delete]: $path $tag"
@@ -397,7 +408,7 @@ proc {Clean folder} detail {
 		incr count
 		update idletasks
 	}
-	
+
 	puts $::wrInfo [mc {%d items are deleted.} $count]
 }
 
@@ -556,9 +567,9 @@ proc queryTargettedApiToApk {apkPath} {
 	global manifest
 
 	set w [::tcl::chan::variable manifest]
-	set err [catch {bgopen -chan $w -conderror &&0 [getVFile aapt.exe] dump badging $cApp(path)}]
+	set err [catch {bgopen -conderror !=0 -chan $w [getVFile aapt.exe] dump badging $cApp(path)}]
 	close $w
-	
+
 	if $err {
 		unset manifest
 		return
@@ -568,7 +579,7 @@ proc queryTargettedApiToApk {apkPath} {
 	if {$api eq {}} {
 		regexp {sdkVersion:'(\d*)'} $manifest] {} api
 	}
-	
+
 	unset manifest
 	return $api
 }
@@ -582,7 +593,7 @@ proc queryApiLevel {apkPath} {
 		set api [queryTargettedApiToApk $cApp(path)]
 		if {$api ne {}} {return $api}
 	}
-	
+
 	# Query to apktool.yml
 	if [file exists [file normalize $cApp(proj)/apktool.yml]] {
 		set yml [::yaml::yaml2dict -file [file normalize $cApp(proj)/apktool.yml]]
@@ -593,7 +604,7 @@ proc queryApiLevel {apkPath} {
 			return [dict get $yml sdkInfo minSdkVersion]
 		}
 	}
-	
+
 	# Query to project compressed
 	if [file exists $cApp(proj)] {
 		7za a -y -tzip -mx1 [getVFile recovery.apk] $cApp(proj)\\*
@@ -608,11 +619,11 @@ proc queryApiLevel {apkPath} {
 # 디오덱스 내용물 파일 경로를 앱 파일 경로하고 같은 경로에 위치시키게 되었다.
 plugin {Deodex} {apkPath} {
 	getNativePathArray $apkPath cApp
-	
+
 	ensureFiles $cApp(odex)
-	
+
 	puts -nonewline $::wrInfo [mc {Deodexing...}]
-	
+
 	set api [queryApiLevel $apkPath]
 	if {$api ne {}} {set api "-a $api"}
 
@@ -624,7 +635,7 @@ plugin {Deodex} {apkPath} {
 
 plugin {Dex} {apkPath} {
 	getNativePathArray $apkPath cApp
-	
+
 	set api [queryApiLevel $apkPath]
 	if {$api ne {}} {set api "-a $api"}
 
@@ -659,14 +670,14 @@ plugin {View java source} {apkPath} {
 		dex2jd $cApp(dex)/classes.dex
 		return
 	}
-	
+
 	if [rdbleFile $cApp(odex)] {
 		::Deodex business $apkPath
 		::Dex business $apkPath
 		dex2jd $cApp(dex)
 		return
 	}
-	
+
 	puts $::wrError [mc {Cannot find classes.dex}]
 }
 
@@ -679,7 +690,7 @@ proc bugReport {} {
 	set psr [auto_execok psr.exe]
 	if {$psr ne {}} {
 		puts $::wrInfo [mc {You can record process invoking problem.}]
-		bgopen -conderror &&0 $psr /output $reportFile /recordpid [pid]
+		bgopen $psr /output $reportFile /recordpid [pid]
 	}
 
 	# 로그파일 생성
@@ -691,7 +702,7 @@ proc bugReport {} {
 	close $logHandle
 
 	# 로그파일 추가, 버그리포트 파일 실행
-	bgopen -outchan $null [getVFile 7za.exe] a -y -tzip -mx9 $reportFile $logFile
+	bgopen -conderror !=0 -outchan $null [getVFile 7za.exe] a -y -tzip -mx9 $reportFile $logFile
 	exec {*}[auto_execok start] {} $reportFile
 
 	# 전송확인
@@ -706,7 +717,7 @@ proc bugReport {} {
 	set data [read $archive]
 	close $archive
 	set transErr [catch {http::geturl http://jeiea.dothome.co.kr/bugreport.php \
-		-method POST -query $data -type {application/zip}}]
+			-method POST -query $data -type {application/zip}}]
 	if $transErr {
 		puts $::wrError [mc {Cannot connect to server.}]
 	} {

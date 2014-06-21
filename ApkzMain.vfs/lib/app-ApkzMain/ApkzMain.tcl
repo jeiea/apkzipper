@@ -6,6 +6,7 @@ set ::apkz_ver_dist beta
 set ::lib_path [file dirname [info script]]
 lappend auto_path [file dirname $lib_path]
 
+# 패키지 선언부
 package require Tcl 8.6
 package require Tk
 package require Ttk
@@ -60,12 +61,10 @@ bind .bottomConsole.sb <Control-Shift-3> {
 }
 
 # 프로그램 종료 시 임시파일 제거 등 정리작업
-set CleanupApplicationScript {
+bind . <Destroy> {
 	catch {
 		cleanupVFile
 		saveConfig
 	}
 	exit
 }
-bind . <Destroy> [concat $CleanupApplicationScript [bind . <Destroy>]]
-unset CleanupApplicationScript
