@@ -315,3 +315,8 @@ mcset ko {Executable directory} {실행파일 폴더}
 mcset ko {Apk directory} {앱 파일 폴더}
 mcset ko {Project location:} {projects 폴더 위치:}
 mcset ko {Can't locate needed file: %s} {필요한 파일이 없습니다: %s}
+
+
+
+
+

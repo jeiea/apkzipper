@@ -57,7 +57,7 @@ proc javaExceptionDetector {log} {
 	switch -glob -- $log {
 		*brut.androlib.err.UndefinedResObject*
 		{
-			# apktool decompile error
+			# apktool 디컴 시 SystemUI.apk의 리소스를 찾지 못해 일어나는 에러
 			puts $::wrError [mc {Can't locate needed resource}]
 			puts $::wrError [mc {How about copy /system/framework folder to path where .apk file exists?}]
 		}
@@ -135,7 +135,7 @@ plugin Compile apkPath {
 		puts $::wrInfo [mc {apk compiling...}]
 	}
 
-	apktool b -a [getVFile aapt.exe] -o $cApp(unsigned) $cApp(proj)
+	apktool b -o $cApp(unsigned) $cApp(proj)
 
 	puts $::wrDebug [mc {Adjusting compressing level...}]
 	# INFO: -aoa는 overwrite all destination files이다
