@@ -1,4 +1,4 @@
-
+# ì“°ëŠ” í´ë˜ìŠ¤ê°€ ì•„ë‹˜. í•™ìŠµ ìš©ë„ë¡œ ë‘” ê²ƒ ê°™ë‹¤.
 oo::class create InterChan {
 	constructor {body} {
 		oo::objdefine [self] method write {chan data} $body
@@ -15,6 +15,7 @@ oo::class create InterChan {
 	}
 }
 
+# ì“°ëŠ” í´ë˜ìŠ¤ê°€ ì•„ë‹˜. í•™ìŠµ ìš©ë„ë¡œ ë‘” ê²ƒ ê°™ë‹¤.
 oo::class create CapturingChan {
 	variable var
 	constructor {varnameOrArgs {body ""}} {
@@ -43,49 +44,59 @@ oo::class create CapturingChan {
 #chan push stdout [CapturingChan new myBuffer]
 #chan pop stdout
 
-
 # kostix's snippet from tcler bin
-proc scan_dir {dirname pattern} {
+# usage: scan_dir dir ?pattern ...?
+# ë””ë ‰í† ë¦¬ ì•ˆì—ì„œ íŒ¨í„´ì— í•´ë‹¹í•˜ëŠ” ëª¨ë“  íŒŒì¼ì„ ëŒë ¤ì¤€ë‹¤.
+proc scan_dir {dir pattern} {
 	set out [list]
-	foreach d [glob -type d -nocomplain -dir $dirname *] {
+	foreach d [glob -type d -nocomplain -dir $dir *] {
 		set out [concat $out [scan_dir $d $pattern]]
 	}
-	concat $out [glob -type f -nocomplain -dir $dirname {*}$pattern]
+	concat $out [glob -type f -nocomplain -dir $dir {*}$pattern]
 }
 
 if {$tcl_platform(platform) == {windows}} {
-#	-chan °°Àº °É ¾µ¶© tcl::chan::fifo°°Àº °É ³ÖÀ» ¼ö ÀÖ´Ù.
-#	chan pipe¸¦ ±×´ë·Î ¾²·Á¸é readable¿¡¼­ ½Ç½Ã°£À¸·Î Ã³¸®ÇÏµµ·Ï ÇØÁÖ¾î¾ß ÇÑ´Ù.
+
+	# Windowsìš© ë°±ê·¸ë¼ìš´ë“œ íŒŒì´í•‘ ì‹¤í–‰í•¨ìˆ˜.
+	# usage: bgopen ?option val ...? commandLine
+	# options:
+	# -chan    stdout, stderrë¥¼ ë°›ì„ ì±„ë„ì„ ì§€ì •í•œë‹¤.
+	# -outchan stdoutì„ ë°›ì„ ì±„ë„ì„ ì§€ì •í•œë‹¤.
+	# -errchan stderrë¥¼ ë°›ì„ ì±„ë„ì„ ì§€ì •í•œë‹¤.
+	# -conderror exitcodeë¥¼ ì¢Œë³€ê°’ìœ¼ë¡œ í•˜ëŠ” ì—ëŸ¬ì¡°ê±´ ìˆ˜ì‹ì„ ì§€ì •í•œë‹¤.
+	# --       ì˜µì…˜ íŒŒì‹±ì„ ê·¸ë§Œí•˜ê³  ë¬´ì¡°ê±´ ëª…ë ¹í–‰ìœ¼ë¡œ ë°›ì•„ë“¤ì¸ë‹¤.
+	# chan ê°™ì€ ê±¸ ì“¸ë• tcl::chan::fifoê°™ì€ ê±¸ ë„£ì„ ìˆ˜ ìˆë‹¤.
+	# chan pipeë¥¼ ê·¸ëŒ€ë¡œ ì“°ë ¤ë©´ readableì—ì„œ ì‹¤ì‹œê°„ìœ¼ë¡œ ì²˜ë¦¬í•˜ë„ë¡ í•´ì£¼ì–´ì•¼ í•œë‹¤.
 	proc bgopen {args} {
-#		catch {
-#			::twapi::allocate_console
-#			set hWnd [::twapi::get_console_window]
-#			::twapi::hide_window $hWnd
-#		}
+		#		catch {
+		#			::twapi::allocate_console
+		#			set hWnd [::twapi::get_console_window]
+		#			::twapi::hide_window $hWnd
+		#		}
 		set w(out) $::wrDebug
 		set w(err) $::wrError
-		set condErr {}
+		set condErr {ni {}}
 
 		set cmdline $args
 		set opTable {-chan -outchan -errchan -conderror --}
 		foreach {opt val} $args {
 			if [catch {set opt [::tcl::prefix match $opTable $opt]}] break
 			switch $opt {
-			-chan { set w(out) $val
+				-chan { set w(out) $val
 					set w(err) $val }
-			-outchan { set w(out) $val }
-			-errchan { set w(err) $val }
-			-conderror { set condErr $val }
-			-- {
-				set cmdline [lrange $cmdline 1 end]
-				break
-			}}
+				-outchan { set w(out) $val }
+				-errchan { set w(err) $val }
+				-conderror { set condErr $val }
+				-- {
+					set cmdline [lrange $cmdline 1 end]
+					break
+				}}
 			set cmdline [lrange $cmdline 2 end]
 		}
 
 		foreach ch {out err} {
-#			refchan doesn't have OS handle, so mediate channel required.
-			# ÀÌ°Ç ADB¿¡¼­¸¸ ½á¾ß ÇÔ. ÀÏ¹İÈ­ ½ÃÅ°·Á¸é Àú encoding°ú translationÀÌ ½ÉÈ÷ °É¸².
+			# refchan doesn't have OS handle, so mediate channel required.
+			# ì´ê±´ ADBì—ì„œë§Œ ì¨ì•¼ í•¨. ì¼ë°˜í™”ì‹œí‚¤ë ¤ë©´ ì € encodingê³¼ translationì´ ì‹¬íˆ ê±¸ë¦¼.
 			if ![string match file* $w($ch)] {
 				set dest $w($ch)
 				lassign [chan pipe] r($ch) w($ch)
@@ -98,7 +109,7 @@ if {$tcl_platform(platform) == {windows}} {
 
 		puts $::wrVerbose $cmdline
 		set pid [exec -- {*}$cmdline >@ $w(out) 2>@ $w(err) &]
-		
+
 		set hProc [twapi::get_process_handle $pid -access generic_all]
 		set bgAlive($pid) 0
 		twapi::wait_on_handle $hProc -executeonce 1 -async [list set ::bgAlive($pid) 1]\;#
@@ -109,7 +120,7 @@ if {$tcl_platform(platform) == {windows}} {
 			error {Canceled by user} {} {CustomError bgopenCancel}
 		}
 		unset ::bgAlive($pid)
-		
+
 		append flushPhrase "chan flush $w(out); chan flush $w(err);"
 		eval $flushPhrase
 		foreach ch {out err} {
@@ -121,12 +132,12 @@ if {$tcl_platform(platform) == {windows}} {
 			}
 		}
 
-		if $exitcode$condErr {
+		if [expr "$exitcode $condErr"] {
 			error [mc {Runtime error occured.}] $args [list CustomError bgopenError $exitcode]
 		}
 		return $exitcode
 	}
-	
+
 	bind . <Destroy> {+
 		foreach pid [array names ::bgAlive] {
 			set ::bgAlive($pid) suspend
@@ -134,6 +145,7 @@ if {$tcl_platform(platform) == {windows}} {
 	}
 
 } else {
+
 	proc bgopen_handler {callback chan} {
 		append ::bgData($chan) [set data [read $chan]]
 		catch {{*}$callback $data}
@@ -142,8 +154,8 @@ if {$tcl_platform(platform) == {windows}} {
 			fconfigure $chan -blocking true
 			set returnInfo {}
 			set isErr [catch {close $chan} errmsg returnInfo]
-			# errorinfo´Â errmsg¿¡ ½ºÅÃÆ®·¹ÀÌ½º°¡ ´õ ºÙÀº °ÍÀÌ´Ù.
-			# ¿©±â¼± »çÀü¿¡ ´ã¾ÆµÎ±â¸¸ ÇÏ°í, bgopen¿¡¼­ error¸¦ È£ÃâÇÑ´Ù.
+			# errorinfoëŠ” errmsgì— ìŠ¤íƒíŠ¸ë ˆì´ìŠ¤ê°€ ë” ë¶™ì€ ê²ƒì´ë‹¤.
+			# ì—¬ê¸°ì„  ì‚¬ì „ì— ë‹´ì•„ë‘ê¸°ë§Œ í•˜ê³ , bgopenì—ì„œ errorë¥¼ í˜¸ì¶œí•œë‹¤.
 			dict set returnInfo -errormsg $errmsg
 			dict set returnInfo -stdout $::bgData($chan)
 			unset ::bgData($chan)
@@ -161,47 +173,51 @@ if {$tcl_platform(platform) == {windows}} {
 		set ret $::bgAlive($chan)
 		unset ::bgAlive($chan)
 		if {[dict get $ret -code] == 1} {
-			# errmsg·Î Áö±İ±îÁö ÇÁ·Î±×·¥ÀÌ Ãâ·ÂÇÑ µ¥ÀÌÅÍ(stdout)¸¦ µ¹·ÁÁÜ.
+			# errmsgë¡œ ì§€ê¸ˆê¹Œì§€ í”„ë¡œê·¸ë¨ì´ ì¶œë ¥í•œ ë°ì´í„°(stdout)ë¥¼ ëŒë ¤ì¤Œ.
 			error [dict get $ret -stdout] [dict get $ret -errorinfo] [dict get $ret -errorcode]
 		}
 		return [dict get $ret -stdout]
 	}
+
 }
 
-# ÆÄÀÌ½ãÀÇ range¶û °°´Ù. ¸®´ª½ºÀÇ seq¶û °°ÀºÁö´Â ¸ğ¸£°ÚÁö¸¸.
+# íŒŒì´ì¬ì˜ rangeë‘ ê°™ë‹¤. ë¦¬ëˆ…ìŠ¤ì˜ seqë‘ ê°™ì€ì§€ëŠ” ëª¨ë¥´ê² ì§€ë§Œ.
 proc seq args {
 	set res {}
 	switch [llength $args] {
-	1 {
-		lassign $args end
-		for {set i 0} {$i < $end} {incr i} {lappend res $i}
-		return $res
-	}
-	2 {
-		lassign $args start end
-		if {$start < $end} {
-			set step 1
-			set cond {$i < $end}
-		} {
-			set step -1
-			set cond {$i > $end}
+		1 {
+			lassign $args end
+			for {set i 0} {$i < $end} {incr i} {lappend res $i}
+			return $res
 		}
-		for {set i $start} $cond {incr i $step} {lappend res $i}
-		return $res
-	}
-	3 {
-		lassign $args start end step
-		if {$step > 0} {
-			set cond {$i < $end}
-		} {
-			set cond {$i > $end}
+		2 {
+			lassign $args start end
+			if {$start < $end} {
+				set step 1
+				set cond {$i < $end}
+			} {
+				set step -1
+				set cond {$i > $end}
+			}
+			for {set i $start} $cond {incr i $step} {lappend res $i}
+			return $res
 		}
-		for {set i $start} $cond {incr i $step} {lappend res $i}
-		return $res
-	}
+		3 {
+			lassign $args start end step
+			if {$step > 0} {
+				set cond {$i < $end}
+			} {
+				set cond {$i > $end}
+			}
+			for {set i $start} $cond {incr i $step} {lappend res $i}
+			return $res
+		}
 	}
 }
 
+# ì „ë¶€ ì½ì„ ìˆ˜ ìˆëŠ” íŒŒì¼ì¸ì§€ ê²€ì‚¬í•œë‹¤.
+# usage: rdbleFile ?file ...?
+# ì¤‘ë³µ ì œê±° ìš©ë„ê°€ ê°•í•˜ë‹¤.
 proc rdbleFile {args} {
 	foreach file $args {
 		if ![file isfile $file]||![file readable $file] {
@@ -211,24 +227,26 @@ proc rdbleFile {args} {
 	return true
 }
 
+# ê·¸ ìš´ì˜ì²´ì œì—ì„œ ì“¸ ìˆ˜ ìˆëŠ” íŒŒì¼ ê²½ë¡œë¥¼ ëŒë ¤ì¤€ë‹¤
 proc AdaptPath file {file nativename [file normalize $file]}
 
 package require http
+
 proc httpcopy {url {file ""}} {
 	set token [::http::geturl $url -progress httpCopyProgress]
 
-	#Àü¿ª¹üÀ§ÀÇ '¹è¿­'ÀÌ¶ó¼­ upvarÃ³¸®¸¦ ÇØ¾ßÇÑ´Ù.
+	#ì „ì—­ë²”ìœ„ì˜ 'ë°°ì—´'ì´ë¼ì„œ upvarì²˜ë¦¬ë¥¼ í•´ì•¼í•œë‹¤.
 	upvar #0 $token state
 	if ![info exist state] {error 1}
 
-	# HTTP ¸®´ÙÀÌ·º¼Ç Ã³¸®.
-	# 1. Çì´õ¸¦ ÀÌ¿ëÇÑ ¹æ¹ı. dict´Â ´ë¼Ò¹®ÀÚ ±¸ºĞÀÌ Èûµé¾î ¾È µÊ.
+	# HTTP ë¦¬ë‹¤ì´ë ‰ì…˜ ì²˜ë¦¬.
+	# 1. í—¤ë”ë¥¼ ì´ìš©í•œ ë°©ë²•. dictëŠ” ëŒ€ì†Œë¬¸ì êµ¬ë¶„ì´ í˜ë“¤ì–´ ì•ˆ ë¨.
 	foreach {name value} $state(meta) {
 		if {[regexp -nocase ^location$ $name]} {
 			return [httpcopy [string trim $value] $file]
 		}
 	}
-	
+
 	set data [::http::data $token]
 	if {$file != {}} {
 		set out [open $file wb]
@@ -253,28 +271,6 @@ proc httpCopyProgress {token total current} {
 		bind .t <Destroy> {}
 		destroy .t
 	}
-}
-
-proc max {args} {
-	if ![llength $args] return
-	set ret [lindex $args 0]
-	foreach item $args {
-		if {$ret < $item} {
-			set ret $item
-		}
-	}
-	return $ret
-}
-
-proc min {args} {
-	if ![llength $args] return
-	set ret [lindex $args 0]
-	foreach item $args {
-		if {$ret > $item} {
-			set ret $item
-		}
-	}
-	return $ret
 }
 
 # Not guarantee uniqueness
@@ -303,12 +299,12 @@ proc InputDlg {msg} {
 	.pul.entry insert 0 [lindex $::hist($msg) 0]
 	.pul.entry selection range 0 end
 
-	# ±îÅ»½º·¯¿î °÷. []À» Ä¡È¯ÇØÁÖÁú ¾Ê¾Æ eval·Î Á÷Á¢.
+	# ê¹ŒíƒˆìŠ¤ëŸ¬ìš´ ê³³. []ì„ ì¹˜í™˜í•´ì£¼ì§ˆ ì•Šì•„ evalë¡œ ì§ì ‘.
 	bind .pul.entry <Return> [list eval [info coroutine] {[.pul.entry get]}]
 	bind .pul <Escape> {destroy .pul}
 	bindtags .pul INPUTDLG
 	bind INPUTDLG <Destroy> [list [info coroutine]]
-	
+
 	eval $focusing
 	set ret [yield]
 
@@ -319,8 +315,14 @@ proc InputDlg {msg} {
 	return $ret
 }
 
+# ì§€ì •í•œ ì°½ì˜ í•˜ìœ„ ì°½ì„ ì „ë¶€ ì—´ê±°í•œë‹¤.
+# usage: allwin ?window?
+# ì§€ì •í•˜ì§€ ì•Šìœ¼ë©´ ê¸°ë³¸ê°’ìœ¼ë¡œ .ì´ ì‚¬ìš©ëœë‹¤.
 proc allwin {{widget .}} {
-	set ret [string repeat { } [regexp -all {\.} $widget]]$widget
+	set Depth [expr [regexp -all {\.} $widget] - 1]
+	set Indent [string repeat { } $Depth]
+	set ret $Indent$widget
+
 	foreach child [winfo children $widget] {
 		append ret \n[allwin $child]
 	}
@@ -333,9 +335,11 @@ proc modeless_dialog args {
 }
 
 proc coproc {name arg body} {
+
 	proc $name $arg [format {
 		coroutine "%s[generateID]" apply [list %s]
 	} [namespace tail $name] [list $arg $body]]
+
 }
 
 proc procname {} {

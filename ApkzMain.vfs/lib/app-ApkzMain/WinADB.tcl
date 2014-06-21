@@ -13,9 +13,11 @@ proc WinADB::adb args {
 	set processNames [lmap pid [twapi::get_process_ids] {twapi::get_process_name $pid}]
 	if [expr {{adb.exe} ni $processNames}] {
 		puts $::wrInfo [mc {Initializing ADB...}]
-		# ... 는 훼이크;; 안 켜져 있으면 알아서 켜주고 이건 그냥 나중에 꺼주는 구문.
+		# 안 켜져 있으면 알아서 켜주고 이건 그냥 나중에 꺼주는 구문.
 		# 안 넣으면 임시파일이 삭제가 안 되고 설정 저장 안 됨.
-		bind MAINWIN <Destroy> "WinADB::adb kill-server;[bind MAINWIN <Destroy>]"
+		set PrependScript {WinADB::adb kill-server;}
+		set BoundScript [bind . <Destroy>]
+		bind . <Destroy> [concat $PrependScript $BoundScript]
 	}
 
 	global adbout
@@ -103,7 +105,7 @@ plugin {Import from phone} args {
 	if {$primaryApp ne {}} {
 		set local [file dirname $primaryApp]
 	} {
-		set local $::exeDir
+		set local $::exe_dir
 	}
 	set local [AdaptPath $local/[file tail $remote]]
 	puts $::wrInfo [mc {Pulling... %s --> %s} $remote $local]
@@ -146,7 +148,7 @@ proc {WinADB::ADB logcat} bLogging {
 	variable logcatPID
 
 	if $bLogging {
-		set logfile [AdaptPath [file normalize $::exeDir/logcat.txt]]
+		set logfile [AdaptPath [file normalize $::exe_dir/logcat.txt]]
 		WinADB::adb version
 		set logcatPID [exec [getVFile adb.exe] logcat >& $logfile &]
 		puts $::wrInfo [mc {ADB logcat executed: %s} $logfile]

@@ -2,15 +2,7 @@ package require tcltest
 
 namespace eval ::test::Snippet {
 	namespace import ::tcltest::*
-	variable RedirectStdout {
-		variable chDebug $::wrDebug
-		set wrDebug stdout
-	}
-	variable CleanupRedirect {
-		variable chDebug
-		set $::wrDebug $chDebug
-	}
-	# proj¿Í path¸¦ ¿Å±âµçÁö ÇØ¾ßÁö ¿ø...
+	# projì™€ pathë¥¼ ì˜®ê¸°ë“ ì§€ í•´ì•¼ì§€ ì›...
 	variable tempFolder [file normalize [file join $::env(TEMP) AppzTmpBin]]
 	
 	proc CleanupTemp {} {

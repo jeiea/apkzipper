@@ -1,9 +1,9 @@
 
-# Àü¿ªº¯¼ö ¼±¾ğºÎ.
-::msgcat::mcload $libpath/locale
-set vfsRoot [file dirname [file dirname $libpath]]
-set exeDir [file dirname $vfsRoot]
-set env(PATH) "$exeDir;$env(PATH)"
+# ì „ì—­ë³€ìˆ˜ ì„ ì–¸ë¶€.
+::msgcat::mcload $lib_path/locale
+set vfsRoot [file dirname [file dirname $lib_path]]
+set exe_dir [file dirname $vfsRoot]
+set env(PATH) "$exe_dir;$env(PATH)"
 array set configDefault {
 	zlevel	9
 	decomTargetOpt	"     "
@@ -47,15 +47,15 @@ namespace eval Config {
 	
 }
 
-# ¹è¿­ÀÌ ¼±¾ğµÇ¾î ÀÖ¾î¾ß trace°¡ ¸ÔÈû
+# ë°°ì—´ì´ ì„ ì–¸ë˜ì–´ ìˆì–´ì•¼ traceê°€ ë¨¹í˜
 array set histDefault {
 	lastBrowsePath .
 	mainWinPos 640x480
 }
 array set hist [array get histDefault]
 
-# Ãß°¡ÇÏ¸é ¾Ë¾Æ¼­ ¸Ç Ã³À½ Ç×¸ñÀ¸·Î Ãß°¡µÇµµ·Ï Á¶ÀÛÇÑ´Ù.
-# ÃÖ´ë Ç×¸ñ ¼ö¸¦ ¾È ³Ñµµ·Ï °¨µ¶.
+# ì¶”ê°€í•˜ë©´ ì•Œì•„ì„œ ë§¨ ì²˜ìŒ í•­ëª©ìœ¼ë¡œ ì¶”ê°€ë˜ë„ë¡ ì¡°ì‘í•œë‹¤.
+# ìµœëŒ€ í•­ëª© ìˆ˜ë¥¼ ì•ˆ ë„˜ë„ë¡ ê°ë….
 trace add variable ::hist read Config::__traceHist__
 proc Config::__traceHist__ {ar key op} {
 	if ![info exist ::hist($key)] {
@@ -63,7 +63,7 @@ proc Config::__traceHist__ {ar key op} {
 	}
 }
 
-# ¿©±â¿¡¼­ Áßº¹Á¦°Å¸¦ Ã³¸®½ÃÅ°·Á¸é ¾Ë¾Æ¼­ °°Àº Á¾·ùÀÇ ÀÚ·á´Â °°µµ·Ï valÀ» ³Ñ°ÜÁà¾ß.
+# ì—¬ê¸°ì—ì„œ ì¤‘ë³µì œê±°ë¥¼ ì²˜ë¦¬ì‹œí‚¤ë ¤ë©´ ì•Œì•„ì„œ ê°™ì€ ì¢…ë¥˜ì˜ ìë£ŒëŠ” ê°™ë„ë¡ valì„ ë„˜ê²¨ì¤˜ì•¼.
 proc Config::addHist {key val} {
 	set idx [lsearch -exact $::hist($key) $val]
 	if {$idx == -1} {
@@ -77,10 +77,10 @@ proc Config::addHist {key val} {
 	saveConfig
 }
 
-# ½ÇÇàÆÄÀÏ °æ·Î¿¡ ¼³Á¤ÆÄÀÏÀÌ ÀÖÀ¸¸é, ±× ¼³Á¤ÆÄÀÏÀ» ¾¸.
+# ì‹¤í–‰íŒŒì¼ ê²½ë¡œì— ì„¤ì •íŒŒì¼ì´ ìˆìœ¼ë©´, ê·¸ ì„¤ì •íŒŒì¼ì„ ì”€.
 proc Config::getConfigFilePath {} {
-	if [file exist $::exeDir/apkz.cfg] {
-		set path $::exeDir/apkz.cfg
+	if [file exist $::exe_dir/apkz.cfg] {
+		set path $::exe_dir/apkz.cfg
 	} {
 		set path $::env(appdata)/apkz.cfg 
 	}
@@ -101,7 +101,7 @@ proc Config::saveConfig {} {
 	dict set data config [array get ::config]
 
 	fconfigure [set configfile [open [getConfigFilePath] w]] -encoding utf-8
-	catch {puts $configfile "$fileSignature $::apkzver"} err errinfo
+	catch {puts $configfile "$fileSignature $::apkz_ver"} err errinfo
 	puts $configfile $data
 	close $configfile
 }
@@ -110,7 +110,7 @@ proc Config::getMinorVersion {version subver} {
 	return [join [lrange [split $version .] 0 $subver] .]
 }
 
-# subver¿¡ µû¶ó ¸ŞÀÌÀú, ¸¶ÀÌ³Ê¹öÀüµµ ºñ±³ÇÒ ¼ö ÀÖÀ½.
+# subverì— ë”°ë¼ ë©”ì´ì €, ë§ˆì´ë„ˆë²„ì „ë„ ë¹„êµí•  ìˆ˜ ìˆìŒ.
 proc Config::vcompare {a b subver} {
 	return [package vcompare [getMinorVersion $a $subver] [getMinorVersion $b $subver]]
 }
@@ -126,16 +126,16 @@ proc Config::loadConfig {} {
 	set data [read $configfile]
 	close $configfile
 
-	# ¸ŞÀÌÀú ¹öÀü ºñ±³
-	if {[vcompare $fileVer $::apkzver 0] != 0} {
+	# ë©”ì´ì € ë²„ì „ ë¹„êµ
+	if {[vcompare $fileVer $::apkz_ver 0] != 0} {
 		tk_messageBox -title [mc {Notice}] -message [concat \
 			[mc {Config file of not compatible version was found.}]\n \
 			[mc {Due to major version difference, it'll use default setting.}]\n
 			[mc {Keep in mind that settings will be overwritten when termination.}]
 		error
 	}
-	# ¸¶ÀÌ³Ê ¹öÀü ºñ±³
-	if {[vcompare $fileVer $::apkzver 1] > 0} {
+	# ë§ˆì´ë„ˆ ë²„ì „ ë¹„êµ
+	if {[vcompare $fileVer $::apkz_ver 1] > 0} {
 		tk_messageBox -title [mc {Notice}] -message [concat \
 			[mc {Config file of different version was found.}]\n \
 			[mc {If problem occurs, you can use reset function.}]\n]
@@ -159,7 +159,7 @@ proc Config::loadConfig {} {
 		puts $::wrVerbose [mc {Error opening config file: %s} $info]\n[mc {Default applied.}]
 		array set ::config [array get ::configDefault]
 	} finally {
-#	¿¡·¯°¡ ÀÖ´Ù¸é ¸í½ÃÀûÀ¸·Î º¸¿©¾ß ÇÔ.
+#	ì—ëŸ¬ê°€ ìˆë‹¤ë©´ ëª…ì‹œì ìœ¼ë¡œ ë³´ì—¬ì•¼ í•¨.
 		if [catch applyConfig] {
 			array set ::config [array get ::configDefault]
 			applyConfig
@@ -167,7 +167,7 @@ proc Config::loadConfig {} {
 	}
 }
 
-# ±âº» ¼³Á¤¿¡ µû¸¥ ÃÊ±âÈ­ ÀÛ¾÷
+# ê¸°ë³¸ ì„¤ì •ì— ë”°ë¥¸ ì´ˆê¸°í™” ì‘ì—…
 proc applyConfig {} {
 	set taskMap {
 		::config(autoUpdate) {
@@ -188,7 +188,7 @@ proc applyConfig {} {
 		}
 		::hist(mainWinPos) {
 			wm geometry . $::hist(mainWinPos)
-			bind MAINWIN <Configure> {
+			bind . <Configure> {+
 				set ::hist(mainWinPos) [wm geometry .]
 			}
 		}
@@ -260,16 +260,16 @@ coproc Config::showDialog {{location ""}} {
 	$nb add [set tuner [ttk::frame $nb.tuner]] -text [mc {Tuner}]
 	$nb select $tuner
 	
-	# ÀÌ·± °æ¿ì Áßº¹ Á¦°Å°¡ °¡´ÉÇÏ·Á³ª... ÀÏ´Ü ³ªÁß¿¡ plugin¿¡¼­ ³¢¿ìµµ·Ï ÇÒ °æ¿ì¸¦ ´ëºñÇØ
-	# Áßº¹Àº ³²°ÜµÎÁö¸¸ ¿µ ÂóÂó.
+	# ì´ëŸ° ê²½ìš° ì¤‘ë³µ ì œê±°ê°€ ê°€ëŠ¥í•˜ë ¤ë‚˜... ì¼ë‹¨ ë‚˜ì¤‘ì— pluginì—ì„œ ë¼ìš°ë„ë¡ í•  ê²½ìš°ë¥¼ ëŒ€ë¹„í•´
+	# ì¤‘ë³µì€ ë‚¨ê²¨ë‘ì§€ë§Œ ì˜ ì°ì°.
 
-	# ¾ĞÃà¼¼±â »ı¼º
+	# ì••ì¶•ì„¸ê¸° ìƒì„±
 	set zlevels [lmap i [seq 10] {mc "Ziplevel $i"}]
 	set lbZLevel [ttk::label $tuner.lbZLevel -text [mc {Ziplevel:}]]
 	set cbZLevel [ttk::combobox $tuner.cbZlevel -values $zlevels -state readonly]
 	$cbZLevel current $::config(zlevel)
 	
-	# µğÄÄ¿É¼Ç »ı¼º
+	# ë””ì»´ì˜µì…˜ ìƒì„±
 	set decOptMap {
 		{-r   }	{Sources}
 		{-s   }	{Resources}
@@ -281,20 +281,20 @@ coproc Config::showDialog {{location ""}} {
 	set cbTarget [ttk::combobox $tuner.cbtarget -values $decOptLocalLabels -state readonly]
 	$cbTarget current [lsearch [dict keys $decOptMap] $::config(decomTargetOpt)]
 	
-	# ·Î±×·¹º§
+	# ë¡œê·¸ë ˆë²¨
 	set logLevels {Error Warning Info Debug}
 	set localized [lmap level $logLevels {mc $level}]
 	set lbVerbose [ttk::label $tuner.lbVerbose -text [mc {Log level:}]]
 	set cbVerbose [ttk::combobox $tuner.cbVerbose -values $localized -state readonly]
 	$cbVerbose current [lsearch $logLevels $::config(verbose)]
 	
-	# È®ÀåÀÚ ´Ù¸¥ÆÄÀÏ Ãß°¡È®ÀÎ
+	# í™•ì¥ì ë‹¤ë¥¸íŒŒì¼ ì¶”ê°€í™•ì¸
 	set lbExtConfirm [ttk::label $tuner.lbExtConfirm -text [mc {Operation to other extension:}]]
 	set cbExtConfirm [ttk::combobox $tuner.cbExtConfirm \
 		-values [lmap str {Ask {Yes to all} {No to all}} {mc $str}] -state readonly]
 	$cbExtConfirm current [expr {$::config(permitExtension) - 1}]
 	
-	# ÇÁ·ÎÁ§Æ®Æú´õ À§Ä¡ ÁöÁ¤
+	# í”„ë¡œì íŠ¸í´ë” ìœ„ì¹˜ ì§€ì •
 	set projLocEnum [list [file nativename ./projects] \
 		[mc {Executable directory}] [mc {Apk directory}]]
 	set lbProjLoc [ttk::label $tuner.lbProjLoc -text [mc {Project location:}]]
@@ -311,7 +311,7 @@ coproc Config::showDialog {{location ""}} {
 		}
 	}
 	
-	# ÀÚµ¿ ¾÷µ«, ÆùÆ®
+	# ìë™ ì—…ëƒ, í°íŠ¸
 	global bAutoup
 	set bAutoup $::config(autoUpdate) 
 	set btnAutoup [ttk::checkbutton $tuner.btnAutoup -text [mc {Auto update}] -variable ::bAutoup]
@@ -321,7 +321,7 @@ coproc Config::showDialog {{location ""}} {
 	set btnFont [ttk::button $tuner.btnFont -textvariable ::fontBtnText \
 		-command [list Config::showFontDialog $::View::tCon]]
 	
-	# ¹èÄ¡
+	# ë°°ì¹˜
 	grid $lbZLevel $cbZLevel -padx 3 -pady 2
 	grid $lbTarget $cbTarget -padx 3 -pady 2
 	grid $lbVerbose $cbVerbose -padx 3 -pady 2
@@ -329,16 +329,16 @@ coproc Config::showDialog {{location ""}} {
 	grid $lbProjLoc $cbProjLoc -padx 3 -pady 2
 	grid $btnAutoup $btnFont -padx 3 -pady 2 -sticky we
 	
-	# Ã¢ÀÌ ²¨Áö¸é ÄÚ·çÆ¾ »èÁ¦
+	# ì°½ì´ êº¼ì§€ë©´ ì½”ë£¨í‹´ ì‚­ì œ
 	bindtags .config [concat [bindtags .config] ConfigToplevel]
 	bind ConfigToplevel <Destroy> [format {
 		rename {%s} {}
 	} [info coroutine]]
 
-	# ´ë±â
+	# ëŒ€ê¸°
 	set answer [yield]
 	
-	# °ª Àû¿ë
+	# ê°’ ì ìš©
 	set ::config(zlevel) [$cbZLevel current]
 	set ::config(decomTargetOpt) [lindex [dict keys $decOptMap] [$cbTarget current]]
 	set ::config(verbose) [lindex $logLevels [$cbVerbose current]]

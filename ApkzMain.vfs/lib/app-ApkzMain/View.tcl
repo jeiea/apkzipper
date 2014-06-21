@@ -27,11 +27,11 @@ proc View::init args {
 	menu.attach
 	switchView $::config(viewMode)
 
-	wm title . [mc {ApkZipper %s %s} $::apkzver $::apkzDistver]
+	wm title . [mc {ApkZipper %s %s} $::apkz_ver $::apkz_ver_dist]
 	bind . <Escape> {destroy .}
 	tooltip delay 50
 
-	# Drag and Drop ¹ÙÀÎµù ºÎºĞ
+	# Drag and Drop ë°”ì¸ë”© ë¶€ë¶„
 	tkdnd::drop_target register . DND_Files
 
 	bind . <<Drop:DND_Files>> {
@@ -89,12 +89,12 @@ proc View::bottomPane.generate {} {
 
 	variable tCon $frame.tCmd
 
-	# ÅØ½ºÆ®»óÀÚ ÆùÆ® Á¤ÇÏ±â
+	# í…ìŠ¤íŠ¸ìƒì í°íŠ¸ ì •í•˜ê¸°
 	if {$::config(preferedFont) ne {}} {
 		$tCon config -font [font actual $::config(preferedFont)]
 	} {
 		set fontFamilies [concat $::config(preferedFont) [font families]]
-		foreach ideal {"³ª´®°íµñÄÚµù" "¸¼Àº °íµñ" "Consolas" "µ¸¿òÃ¼" "Verdana"} {
+		foreach ideal {"ë‚˜ëˆ”ê³ ë”•ì½”ë”©" "ë§‘ì€ ê³ ë”•" "Consolas" "ë‹ì›€ì²´" "Verdana"} {
 			if {[lsearch -exact $fontFamilies $ideal] != -1} {
 				$tCon config -font [font actual [list $ideal 9]]
 				break
@@ -148,16 +148,16 @@ proc View::bottomPane.generate {} {
 		}
 	} _$tCon]
 
-	# eventÀÇ mapping keys to virtual event¸¦ ÀÚ¼¼È÷ ÀĞ¾î¾ß ÇÏ´Â±¸³ª ¤Ñ¤Ñ;
-	# ´ëÃæ ÀÌ·± Custom event°¡ ¿ì¼±¼øÀ§°¡ ³ô°í, º° Ã³¸®¸¦ ¾È ÇØÁÖ¸é ´Ù¸¥ ÀÌº¥Æ®´Â Ã³¸® ¾È ÇÏ´Â µí ÇÏ´Ù.
-	# ¾Æ´Ô breakÇØµµ ÀÇ¹Ì°¡ ÀÖ°í.
-	# ±Ùµ¥ return ÀÌ°Å »©¸é À©Å° ´©¸¦ ¶§ ¿¡·¯¶á´Ù. ÀÌÀ¯°¡ ¹¹¿´´õ¶ó..
+	# eventì˜ mapping keys to virtual eventë¥¼ ìì„¸íˆ ì½ì–´ì•¼ í•˜ëŠ”êµ¬ë‚˜ ã…¡ã…¡;
+	# ëŒ€ì¶© ì´ëŸ° Custom eventê°€ ìš°ì„ ìˆœìœ„ê°€ ë†’ê³ , ë³„ ì²˜ë¦¬ë¥¼ ì•ˆ í•´ì£¼ë©´ ë‹¤ë¥¸ ì´ë²¤íŠ¸ëŠ” ì²˜ë¦¬ ì•ˆ í•˜ëŠ” ë“¯ í•˜ë‹¤.
+	# ì•„ë‹˜ breakí•´ë„ ì˜ë¯¸ê°€ ìˆê³ .
+	# ê·¼ë° return ì´ê±° ë¹¼ë©´ ìœˆí‚¤ ëˆ„ë¥¼ ë•Œ ì—ëŸ¬ëœ¬ë‹¤. ì´ìœ ê°€ ë­ì˜€ë”ë¼..
 	bind $tCon <<Copy>> return
 	bind $tCon <<SelectAll>> return
 	bind $tCon <KeyPress> [format {
-		# Control_L °°Àº Modifier´Â ÀÏ´Ü Åë°ú
+		# Control_L ê°™ì€ ModifierëŠ” ì¼ë‹¨ í†µê³¼
 		if {[string first _ "%%K"] != -1} return
-		# ¹æÇâÅ°µµ ¹üÀ§¼±ÅÃ¿¡ Áß¿äÇÏ¹Ç·Î Åë°ú, PgUp, PgDnÅë°ú
+		# ë°©í–¥í‚¤ë„ ë²”ìœ„ì„ íƒì— ì¤‘ìš”í•˜ë¯€ë¡œ í†µê³¼, PgUp, PgDní†µê³¼
 		if [regexp {Up|Down|Left|Right|Prior|Next} "%%K"] return
 			focus %1$s
 		
@@ -284,7 +284,7 @@ proc View::simpleView.generate {} {
 	} $sf]
 	bind SCROLLAREA <4> "$sf xview scroll -5 units"
 	bind SCROLLAREA <5> "$sf xview scroll +5 units"
-	# ¿Ö µô·¹ÀÌ¸¦ Áà¾ß ÇØ°áµÇ´ÂÁö ÀÇ¹®. ´Ù¸¥ ÄÄÇ»ÅÍ¿¡¼­ µ¿ÀÛ ¾ÈÇÒ ¼ö ÀÖÀ½.
+	# ì™œ ë”œë ˆì´ë¥¼ ì¤˜ì•¼ í•´ê²°ë˜ëŠ”ì§€ ì˜ë¬¸. ë‹¤ë¥¸ ì»´í“¨í„°ì—ì„œ ë™ì‘ ì•ˆí•  ìˆ˜ ìˆìŒ.
 	after 200 "$sf xview moveto 1"
 	return $sw
 }
@@ -300,7 +300,7 @@ proc View::detailView {} {
 	set ::config(viewMode) detailView
 }
 
-# ¹öÆ° »ı¼º
+# ë²„íŠ¼ ìƒì„±
 proc View::detailView.generate {} {
 	set frame .detailView
 	if [winfo exists $frame] {
@@ -310,23 +310,23 @@ proc View::detailView.generate {} {
 	ttk::frame $frame
 	set count 0
 	foreach {column proc proc2} $::config(btns) {
-		# ºÎ¸ğ ÇÁ·¹ÀÓ µî·Ï
+		# ë¶€ëª¨ í”„ë ˆì„ ë“±ë¡
 		set parentWin $frame.c$column
 		if ![winfo exists $parentWin] {
 			pack [ttk::frame $parentWin] -side left -expand true -fill both
 		}
 
-		# »ı¼º°ú ¹ÙÀÎµù
+		# ìƒì„±ê³¼ ë°”ì¸ë”©
 		incr colStack($column)
 		set path $parentWin.b$colStack($column)
 		pack [ttk::button $path -text "$count. [mc $proc]" \
 			-command "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc}"] -padx 3 -expand true -fill both
 
-		# µÎ¹øÂ° ¹ÙÀÎµù
+		# ë‘ë²ˆì§¸ ë°”ì¸ë”©
 		if {$proc2 != ""} {
 			bind $path $::config(mod2) "coroutine Trav\[generateID\] ::Session::TraverseCApp {::$proc2}"
-			# tooltipÀÌ msgcatÀ» ÀÚµ¿À¸·Î ÇØ ÁÖ´Â °É ¹¹¶ó´Â °Ç ¾Æ´Ñµ¥, ÀÌ¿Õ ÇØ ÁÙ°Å¸é
-			# mc additional arg±îÁö ´Ù ¹Ş¾ÆÁÖ¸é Á» ÁÁ³ª?
+			# tooltipì´ msgcatì„ ìë™ìœ¼ë¡œ í•´ ì£¼ëŠ” ê±¸ ë­ë¼ëŠ” ê±´ ì•„ë‹Œë°, ì´ì™• í•´ ì¤„ê±°ë©´
+			# mc additional argê¹Œì§€ ë‹¤ ë°›ì•„ì£¼ë©´ ì¢€ ì¢‹ë‚˜?
 			tooltip $path [mc {Right click: %s} [mc $proc2]]
 		}
 		incr count
@@ -447,7 +447,7 @@ proc View::tutorialView.generate {} {
 	return $frame
 }
 
-# ´ÙÀ½¿¡ ¹Ù²ğ ºä¸¦ ¸®ÅÏÇÔ
+# ë‹¤ìŒì— ë°”ë€” ë·°ë¥¼ ë¦¬í„´í•¨
 proc View::switchView {args} {
 	set chain {simpleView detailView tutorialView simpleView detailView}
 	if [llength $args] {
@@ -496,7 +496,7 @@ proc View::menu.attach {} {
 	}
 	
 	$mSdk add command -label [mc {ADB Shell}] -command {
-		# ÀÏºÎ·¯ title caseÇÑ ÀÌÀ¯´Â ÄÜ¼Ö Ã¢ ÀÌ¸§À¸·Î ¾²ÀÌ±â ¶§¹®
+		# ì¼ë¶€ëŸ¬ title caseí•œ ì´ìœ ëŠ” ì½˜ì†” ì°½ ì´ë¦„ìœ¼ë¡œ ì“°ì´ê¸° ë•Œë¬¸
 		::WinADB::adb_waitfor Shell
 	}
 	$mSdk add checkbutton -label [mc {Take phone log}] -variable bLogcat \
@@ -509,7 +509,7 @@ proc View::menu.attach {} {
 	} {
 		$mSdk add command -label [mc $label] -command $cmd
 	}
-	# reboot bootloader·Î °ø¹éÀ» ½áµµ µÇ±ä ÇÑµ¥ È£È¯¼ºÀ» À§ÇØ¼­ -¸¦ ºÙ¿´´Ù. ÀÌÀü¹öÀü adb¸¦ ¾²´Â »ç¶÷µµ ÀÖÀ»Å×´Ï.
+	# reboot bootloaderë¡œ ê³µë°±ì„ ì¨ë„ ë˜ê¸´ í•œë° í˜¸í™˜ì„±ì„ ìœ„í•´ì„œ -ë¥¼ ë¶™ì˜€ë‹¤. ì´ì „ë²„ì „ adbë¥¼ ì“°ëŠ” ì‚¬ëŒë„ ìˆì„í…Œë‹ˆ.
 	# TODO: FASTBOOT
 	# .mbar.sdk add command -label [mc FLASH_RECOVERY] -command {}
 

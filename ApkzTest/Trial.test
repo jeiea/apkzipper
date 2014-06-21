@@ -2,7 +2,7 @@ package require tcltest
 
 namespace eval ::test::Snippet {
 	namespace import ::tcltest::*
-	# proj¿Í path¸¦ ¿Å±âµçÁö ÇØ¾ßÁö ¿ø...
+	# projì™€ pathë¥¼ ì˜®ê¸°ë“ ì§€ í•´ì•¼ì§€ ì›...
 	variable tempFolder [file normalize [file join $::env(TEMP) AppzTmpBin]]
 	
 	proc CleanupTemp {} {
@@ -10,17 +10,17 @@ namespace eval ::test::Snippet {
 		file delete -force $tempFolder
 	}
 
-	test [generateID] {Show update info with downgradable link} {
-		coroutine na eval {
-			set ::ans [ListAndConfirmDlg {asdf} {a b c} {1 2 3 4 5 6}]
-			set ::upcheckFinished a
-		}
-		vwait ::upcheckFinished
-		set ret $::ans
-		unset ::ans
-		unset ::upcheckFinished
-		return $ret
-	} {1 2 3}
+#	test [generateID] {Show update info with downgradable link} {
+#		coroutine na eval {
+#			set ::ans [ListAndConfirmDlg {asdf} {a b c} {1 2 3 4 5 6}]
+#			set ::upcheckFinished a
+#		}
+#		vwait ::upcheckFinished
+#		set ret $::ans
+#		unset ::ans
+#		unset ::upcheckFinished
+#		return $ret
+#	} {1 2 3}
 
 	cleanupTests
 }

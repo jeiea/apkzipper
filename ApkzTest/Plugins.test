@@ -12,9 +12,10 @@ namespace eval ::test::Plugins {
 	}
 
 	test SelectApp {Execute plugin} -body {
-		{::Select app} business {D:/workspace/Apkz/mod ding/GalaxyS2M250K/SystemUI.apk}
-		return prefix$::cAppPaths
-	} -result {prefix{D:/workspace/Apkz/mod ding/GalaxyS2M250K/SystemUI.apk}}
+		set appPath [file join [pwd] {../modding/GalaxyS2M250K/SystemUI.apk}]
+		{::Select app} business $appPath
+		return [string equal $::cAppPaths [list $appPath]]
+	} -result 1
 
 	test AutoDecompile {Check install framework and decompile} -setup {
 		foreach apkPath $::cAppPaths {
@@ -75,7 +76,6 @@ namespace eval ::test::Plugins {
 		return $diff
 	} 0
 	
-
 	cleanupTests
 }
 namespace delete ::test::Plugins

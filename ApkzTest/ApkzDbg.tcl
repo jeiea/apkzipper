@@ -1,10 +1,10 @@
-# ÀüºÎ µğ¹ö±×¶§¸¸ µ¿ÀÛÇØ¾ß ÇÒ ºÎºĞ. ¸±¸®Áî¶© ¾ø¾Ö¾ß ÇÑ´Ù.
-# ÇÔ¼ö¸í °Ë»ö ÀØÁö ¸»ÀÚ.
+# ì „ë¶€ ë””ë²„ê·¸ë•Œë§Œ ë™ì‘í•´ì•¼ í•  ë¶€ë¶„. ë¦´ë¦¬ì¦ˆë• ì—†ì• ì•¼ í•œë‹¤.
+# í•¨ìˆ˜ëª… ê²€ìƒ‰ ìŠì§€ ë§ì.
 console show
 
 package require tcltest
 
-set testlog [file join $::exeDir Release test.log]
+set testlog [file join $::exe_dir Release test.log]
 file delete $testlog
 ::tcltest::configure -testdir [file dirname [file normalize [info script]]]
 ::tcltest::configure -tmpdir [file normalize [info script]/../../Release/testtemp]
@@ -16,33 +16,33 @@ proc r {} {::tcltest::runAllTests}
 
 proc d {} {::tcltest::loadTestedCommands}
 
-cd {D:/workspace/Apkz/Release}
+cd {D:/Jeiea/Project/2013/06/Apkz2/Apkz/Release}
 
 # unittest
 #after 500 {Config::showDialog}
 #coroutine na ListAndConfirmDlg {asdf} {a b c} {1 2 3 4 5 6}
 
 proc pval {args} {
-    foreach varname $args {
-	upvar $varname value
-	puts "$varname: $value"
-    }
+	foreach varname $args {
+		upvar $varname value
+		puts "$varname: $value"
+	}
 }
 
 proc adb args {
-    WinADB::adb {*}$args
+	WinADB::adb {*}$args
 }
 
 proc leavePrefix {cmdstr code result op} {
-    set codename [lindex {TCL_OK TCL_ERROR TCL_RETURN TCL_BREAK TCL_CONTINUE} $code]
-    puts [format "cmdstr: %s\n%s: %s\n" \
-	$cmdstr $codename $result]
+	set codename [lindex {TCL_OK TCL_ERROR TCL_RETURN TCL_BREAK TCL_CONTINUE} $code]
+	puts [format "cmdstr: %s\n%s: %s\n" \
+		$cmdstr $codename $result]
 }
 
 #trace add execution ListAndConfirmDlg leavestep leavePrefix
 
-# errorinfo´Â ¹øÀâÇÏ´Ù. Á» °¡°øÇØ¾ßÁö. proc ·¡ÇÎÀÌ¶ó ÇÏ´Â°Ç°¡?
-# Tk¿¡¼­ textÀ§Á¬¿¡ ´õºíÅ¬¸¯ ¹ö±×¸¦ ÀÏÀ¸Ä×´Ù. ¹¹°¡ ¹®Á¨ °Í °°Àºµ¥.
+# errorinfoëŠ” ë²ˆì¡í•˜ë‹¤. ì¢€ ê°€ê³µí•´ì•¼ì§€. proc ë˜í•‘ì´ë¼ í•˜ëŠ”ê±´ê°€?
+# Tkì—ì„œ textìœ„ì ¯ì— ë”ë¸”í´ë¦­ ë²„ê·¸ë¥¼ ì¼ìœ¼ì¼°ë‹¤. ë­ê°€ ë¬¸ì   ê²ƒ ê°™ì€ë°.
 #rename proc _My_proc
 #_My_proc proc {name args body} {
 #	_My_proc $name $args [format {set err [catch {%s} ret errinf]
@@ -58,109 +58,112 @@ proc leavePrefix {cmdstr code result op} {
 #		return $ret} $body]
 #}
 
-# Àç±ÍÀûÀ¸·Î verbose°É¾î¹ö¸®¸é ÆíÇÒ ÅÙµ¥. ±Ùµ¥... ¹«ÁøÀå ¾î·Æ´Ù. º¯¼ö°ª¸¸ È®ÀÎÇÏ´Â°Ô ¤Ñ¤Ñ;;
-# trace¿¡ ºñ½ÁÇÑ °Ô ÀÖÀ½... Àß ¾Ë¾ÆµÖ¾ß ÇÏ³ª
+# ì¬ê·€ì ìœ¼ë¡œ verboseê±¸ì–´ë²„ë¦¬ë©´ í¸í•  í…ë°. ê·¼ë°... ë¬´ì§„ì¥ ì–´ë µë‹¤. ë³€ìˆ˜ê°’ë§Œ í™•ì¸í•˜ëŠ”ê²Œ ã…¡ã…¡;;
+# traceì— ë¹„ìŠ·í•œ ê²Œ ìˆìŒ... ì˜ ì•Œì•„ë‘¬ì•¼ í•˜ë‚˜
 proc verbose_eval {script} {
-    set cmd ""
-    foreach line [split $script \n] {
-	if {$line eq ""} {continue}
-	append cmd $line\n
-	if { [info complete $cmd] } {
-	    puts -nonewline $cmd
-	    puts -nonewline [uplevel 1 $cmd]
-	    set cmd ""
+	set cmd ""
+	foreach line [split $script \n] {
+		if {$line eq ""} {continue}
+		append cmd $line\n
+		if { [info complete $cmd] } {
+			puts -nonewline $cmd
+			puts -nonewline [uplevel 1 $cmd]
+			set cmd ""
+		}
 	}
-    }
 }
 
 # http://wiki.tcl.tk/16183
+# ì½œ ìŠ¤íƒ ìŠ¤íŠ¸ë§ì„ ë¦¬í„´í•œë‹¤.
 proc stacktrace {} {
-    set stack "Stack trace:\n"
-    for {set i 1} {$i < [info level]} {incr i} {
-	set lvl [info level -$i]
-	set cmd [uplevel $i "namespace which [list [lindex $lvl 0]]"]
-	append stack [string repeat " " $i]$cmd
+	set stack "Stack trace:\n"
+	for {set i 1} {$i < [info level]} {incr i} {
+		set lvl [info level -$i]
+		set cmd [uplevel $i "namespace which [list [lindex $lvl 0]]"]
+		append stack [string repeat " " $i]$cmd
 
-	set realArgs [lrange $lvl 1 end]
-	set isCommand [catch {set protoArgs [info args $cmd]}]
-	if $isCommand {
-	    append stack " $realArgs"
-	    continue
-	}
+		set realArgs [lrange $lvl 1 end]
+		set isCommand [catch {set protoArgs [info args $cmd]}]
+		if $isCommand {
+			append stack " $realArgs"
+			continue
+		}
 
-	foreach value $realArgs name $protoArgs {
-	    if {$value eq ""} {
-		info default $cmd $name value
-	    }
-	    append stack " $name='$value'"
+		foreach value $realArgs name $protoArgs {
+			if {$value eq ""} {
+				info default $cmd $name value
+			}
+			append stack " $name='$value'"
+		}
+		append stack \n
 	}
-	append stack \n
-    }
-    return $stack
+	return $stack
 }
 
-# tooltip°°Àºµ¥¼­ ÀÌ¹Ì ¹ø¿ªµÈ ¸Ş½ÃÁö¸¦ ¶Ç ¹ø¿ª½ÃÅ°´Â ¹½°°Àº ÀÏÀÌ ¹ß»ı.
-# ApkzDbg´Â µğ¹ö±× ÄÚµå´Ï... ±âº» ÆĞÅ°Áö¸¦ ¹Ù²Ù±ä ÂóÂóÇÏ°í ¿©±â¿¡ ¿¹¿Ü¸¦ Ãß°¡½ÃÅ°´Â °ÍÀÌ ³´°Ú´Ù.
+# ì†ŒìŠ¤ ì§œë©´ì„œ ì‹ ê·œ í…ìŠ¤íŠ¸ê°€ ìƒê¸°ë©´ ë””ë²„ê¹… ì‹¤í–‰ì‹œ ê°ì§€í•´
+# ë¦¬ì†ŒìŠ¤ì— ë¯¸ë²ˆì—­ í•­ëª©ì„ ì¶”ê°€ì‹œí‚¤ëŠ” ë£¨í‹´.
+# tooltipê°™ì€ë°ì„œ ì´ë¯¸ ë²ˆì—­ëœ ë©”ì‹œì§€ë¥¼ ë˜ ë²ˆì—­ì‹œí‚¤ëŠ” í˜„ìƒì´ ìˆì–´ ë””ë²„ê·¸ ì½”ë“œì— ì¶”ê°€.
 proc ::msgcat::mcunknown {locale srcstr args} {
-    if [regexp ::tooltip::show [stacktrace]] {return $srcstr}
+	if [regexp ::tooltip::show [stacktrace]] {return $srcstr}
 
-    foreach candidate [::msgcat::mcpreferences] {
-	if [file readable $::libpath/locale/$candidate.msg] {
-	    set catalog [open $::libpath/locale/$candidate.msg a]
-	    fconfigure $catalog -encoding utf-8
-	    puts $catalog "mcset $candidate {$srcstr} {$srcstr}"
-	    uplevel #0 [list ::msgcat::mcset $candidate $srcstr]
-	    puts "new message: $srcstr\n at [stacktrace]"
-	    close $catalog
-	    break
+	foreach candidate [::msgcat::mcpreferences] {
+		if [file readable $::lib_path/locale/$candidate.msg] {
+			set catalog [open $::lib_path/locale/$candidate.msg a]
+			fconfigure $catalog -encoding utf-8
+			puts $catalog "mcset $candidate {$srcstr} {$srcstr}"
+			uplevel #0 [list ::msgcat::mcset $candidate $srcstr]
+			puts "new message: $srcstr\n at [stacktrace]"
+			close $catalog
+			break
+		}
 	}
-    }
 
-    return [expr {[llength $args] ? [format $srcstr {*}$args] : $srcstr}]
+	return [expr {[llength $args] ? [format $srcstr {*}$args] : $srcstr}]
 }
 
-# °ü¸®ÄÚµå. mc¸¦ °­Á¦ ½ÇÇà½ÃÄÑ mcunknown¿¡¼­ constant message¸¦ ¹Ì¸® Ä«Å»·Î±×¿¡ µî·Ï½ÃÅ²´Ù.
-# foreach¹®°°Àº °¡º¯ÀûÀÎ »óÈ²¿¡¼­ÀÇ message´Â Á÷Á¢ µî·ÏÇØÁÖ´Â °ÍÀÌ ¾ÈÀüÇÏ°í,
-# ½Ç¼ö·Î ºü¶ß¸± °æ¿ì¸¦ ´ëºñÇØ mcunknownÀ» µî·Ï½ÃÄÑ Àâµµ·Ï Çß´Ù.
+# ê´€ë¦¬ì½”ë“œ. mcë¥¼ ê°•ì œ ì‹¤í–‰ì‹œì¼œ mcunknownì—ì„œ constant messageë¥¼ ë¯¸ë¦¬ ì¹´íƒˆë¡œê·¸ì— ë“±ë¡ì‹œí‚¨ë‹¤.
+# foreachë¬¸ê°™ì€ ê°€ë³€ì ì¸ ìƒí™©ì—ì„œì˜ messageëŠ” ì§ì ‘ ë“±ë¡í•´ì£¼ëŠ” ê²ƒì´ ì•ˆì „í•˜ê³ ,
+# ì‹¤ìˆ˜ë¡œ ë¹ ëœ¨ë¦´ ê²½ìš°ë¥¼ ëŒ€ë¹„í•´ mcunknownì„ ë“±ë¡ì‹œì¼œ ì¡ë„ë¡ í–ˆë‹¤.
 proc mcExtract {dirname} {
-    foreach relPath [scan_dir $dirname *.tcl] {
-	set srcFile [open $relPath r]
-	set srcText [read $srcFile]
-	close $srcFile
+	foreach relPath [scan_dir $dirname *.tcl] {
+		set srcFile [open $relPath r]
+		set srcText [read $srcFile]
+		close $srcFile
 
-	# Á¤±Ô½ÄÀ¸·Î ÆÄ¼­¸¦ ¸¸µé ¼ø ¾ø´Ù. ¾îÂ÷ÇÇ ±× Á¤µµ±îÁö °¡¸é dynamicÀ¸·Î °£ÁÖÇÏ°í
-	# fail½ÃÄÑµµ »ó°ü ¾øÀ» °ÍÀÌ´Ù.
-	# {\[(mc (\{[^\}]*\}|"[^"]*"|\s*|[^]]*)*)\]} ÀÌ°Ç ¿Ö ¾È µÇÁö
-	foreach {whole phrase arg} [regexp -all -inline \
-	    {\[(mc (\{[^\}]*\}|"[^"]*"|\s*|\w*)*)\]} $srcText] {
-	    set isError [catch [list uplevel #0 $phrase]]
-	    if {0} { puts "[file tail $relPath]: $phrase" }
+		# ì •ê·œì‹ìœ¼ë¡œ íŒŒì„œë¥¼ ë§Œë“¤ ìˆœ ì—†ë‹¤. ì–´ì°¨í”¼ ê·¸ ì •ë„ê¹Œì§€ ê°€ë©´ dynamicìœ¼ë¡œ ê°„ì£¼í•˜ê³ 
+		# failì‹œì¼œë„ ìƒê´€ ì—†ì„ ê²ƒì´ë‹¤.
+		# {\[(mc (\{[^\}]*\}|"[^"]*"|\s*|[^]]*)*)\]} ì´ê±´ ì™œ ì•ˆ ë˜ì§€
+		foreach {whole phrase arg} [regexp -all -inline \
+			{\[(mc (\{[^\}]*\}|"[^"]*"|\s*|\w*)*)\]} $srcText] {
+			set isError [catch [list uplevel #0 $phrase]]
+			if {0} { puts "[file tail $relPath]: $phrase" }
+		}
 	}
-    }
 }
 
-mcExtract $::libpath
+mcExtract $::lib_path
 
+# íŒŒì¼ì´ ê°™ì€ì§€ ë¹„êµ
 proc file_equal {a b} {
-    global aCRC bCRC
-    if {![file exists $a] || ![file exists $b]} {
-	return 0
-    }
+	global aCRC bCRC
+	if {![file exists $a] || ![file exists $b]} {
+		return 0
+	}
 
-    if {[file size $a] != [file size $b]} {
-	return 0
-    }
+	if {[file size $a] != [file size $b]} {
+		return 0
+	}
 
-    package require tcl::transform::crc32
+	package require tcl::transform::crc32
 
-    set aCheck [tcl::transform::crc32 [open $a] -read-variable aCRC]
-    set bCheck [tcl::transform::crc32 [open $b] -read-variable bCRC]
-    read $aCheck
-    read $bCheck
-    close $aCheck
-    close $bCheck
-    set result [expr {($aCRC eq $bCRC)}]
-    unset aCRC
-    unset bCRC
-    return $result
+	set aCheck [tcl::transform::crc32 [open $a] -read-variable aCRC]
+	set bCheck [tcl::transform::crc32 [open $b] -read-variable bCRC]
+	read $aCheck
+	read $bCheck
+	close $aCheck
+	close $bCheck
+	set result [expr {($aCRC eq $bCRC)}]
+	unset aCRC
+	unset bCRC
+	return $result
 }

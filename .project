@@ -16,7 +16,7 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1372487485164</id>
+			<id>1402974133680</id>
 			<name></name>
 			<type>13</type>
 			<matcher>
@@ -25,7 +25,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1372487485179</id>
+			<id>1402974133690</id>
 			<name></name>
 			<type>13</type>
 			<matcher>
@@ -34,7 +34,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1372487485193</id>
+			<id>1402974133702</id>
 			<name></name>
 			<type>13</type>
 			<matcher>
@@ -43,7 +43,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1372487485208</id>
+			<id>1402974133712</id>
 			<name></name>
 			<type>13</type>
 			<matcher>
@@ -52,7 +52,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1372487485223</id>
+			<id>1402974133722</id>
 			<name></name>
 			<type>13</type>
 			<matcher>
@@ -61,12 +61,21 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1372487485238</id>
+			<id>1402974133732</id>
 			<name></name>
 			<type>13</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
 				<arguments>1.0-name-matches-false-false-ApkzMain.vfs</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1402974133742</id>
+			<name></name>
+			<type>9</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-Build</arguments>
 			</matcher>
 		</filter>
 	</filteredResources>

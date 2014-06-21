@@ -19,8 +19,8 @@ proc Java args {
 	}
 }
 
-# vfsÀÇ ¹ÙÀÌ³Ê¸®¸¦ º¹»çÇØ¼­ °æ·Î¸¦ ¸®ÅÏ. vfs¿¡ ¾øÀ¸¸é ÀÓ½ÃÆú´õ ÀÓ½ÃÆÄÀÏ °æ·Î¸¦ ¸®ÅÏ.
-# ÀÎÀÚ°¡ ¾øÀ¸¸é ÀÓ½ÃÆú´õ¸¦ ¸®ÅÏ
+# vfsì˜ ë°”ì´ë„ˆë¦¬ë¥¼ ë³µì‚¬í•´ì„œ ê²½ë¡œë¥¼ ë¦¬í„´. vfsì— ì—†ìœ¼ë©´ ì„ì‹œí´ë” ì„ì‹œíŒŒì¼ ê²½ë¡œë¥¼ ë¦¬í„´.
+# ì¸ìê°€ ì—†ìœ¼ë©´ ì„ì‹œí´ë”ë¥¼ ë¦¬í„´
 proc getVFile args {
 	global virtualTmpDir
 
@@ -29,7 +29,7 @@ proc getVFile args {
 		file delete -force $virtualTmpDir
 		set virtualTmpDir [file join [file dirname $virtualTmpDir] AppzTmpBin]
 	}
-	# µµÁß¿¡ ÀÓ½ÃÆú´õ°¡ »èÁ¦µÈ °æ¿ì ´ëºñ
+	# ë„ì¤‘ì— ì„ì‹œí´ë”ê°€ ì‚­ì œëœ ê²½ìš° ëŒ€ë¹„
 	file mkdir $virtualTmpDir
 
 	if ![llength $args] {return $virtualTmpDir}
@@ -45,7 +45,8 @@ proc getVFile args {
 			file copy -force $virtualFile $realFile
 		}
 	}
-	return $realFile}
+	return $realFile
+}
 
 proc cleanupVFile {} {
 	if [info exist ::virtualTmpDir] {
@@ -123,7 +124,7 @@ oo::class create Plugin {
 	}
 }
 
-# ¹öÆ°À¸·Î ³Ö±â À§ÇÑ ¹ØÀÛ¾÷À» ³ÖÀº ÇÔ¼ö¸¦ »ı¼º
+# ë²„íŠ¼ìœ¼ë¡œ ë„£ê¸° ìœ„í•œ ë°‘ì‘ì—…ì„ ë„£ì€ í•¨ìˆ˜ë¥¼ ìƒì„±
 proc plugin args {
 	Plugin create {*}$args
 }

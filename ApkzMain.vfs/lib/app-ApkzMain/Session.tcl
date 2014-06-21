@@ -33,7 +33,7 @@ proc Session::CommandParser line {
 	set cmd [string tolower [lindex $line 0]]
 	set line [regsub -all {"([^"]*)"} $line {{\1}}]
 	
-	# HACK: ³ªÁß¿¡ VFSÃ³·³ ¸¸µé¾î¾ß... ÀÌ°Íµµ ÁÁÁö¸¸ Á» ´õ ±ò²ûÇÏ°Ô
+	# HACK: ë‚˜ì¤‘ì— VFSì²˜ëŸ¼ ë§Œë“¤ì–´ì•¼... ì´ê²ƒë„ ì¢‹ì§€ë§Œ ì¢€ ë” ê¹”ë”í•˜ê²Œ
 	if {$cmd eq {0}} {
 		puts $::wrDebug "adb pull [lrange $line 1 end]"
 		WinADB::adb pull {*}[lrange $line 1 end]
@@ -82,7 +82,7 @@ proc Session::CommandParser line {
 	}
 }
 
-# ´çÀåÀº ÇÊ¿ä¾øÁö¸¸ ³ªÁß¿¡ ÀÓ½Ã ¼¼¼ÇÀ» ¸¸µé °æ¿ì¸¦ À§ÇØ ³²°Ü µÒ
+# ë‹¹ì¥ì€ í•„ìš”ì—†ì§€ë§Œ ë‚˜ì¤‘ì— ì„ì‹œ ì„¸ì…˜ì„ ë§Œë“¤ ê²½ìš°ë¥¼ ìœ„í•´ ë‚¨ê²¨ ë‘ 
 proc Session::makeSessionName apps {
 	set someFilename [file tail [lindex $apps 0]]
 	set num [llength $apps]
@@ -194,7 +194,7 @@ plugin {Select app recent} {} {
 }
 
 #plugin {Import project} {} {
-#	set initdir [expr [info exist ::config(lastBrowseDir)] ? $::config(lastBrowseDir) : $::exeDir]
+#	set initdir [expr [info exist ::config(lastBrowseDir)] ? $::config(lastBrowseDir) : $::exe_dir]
 #	set proj [tk_chooseDirectory -initialdir $initdir -mustexist 1 -title [mc {Choose project directory}]]
 #}
 

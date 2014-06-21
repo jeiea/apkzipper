@@ -1,10 +1,13 @@
-package provide app-ApkzMain 2.3.6
+set ::apkz_ver [package versions app-ApkzMain]
 
-set libpath [file dirname [info script]]
-lappend auto_path [file dirname $libpath]
-tk appname ApkZipper2
+set ::apkz_ver_dist beta
+
+set ::lib_path [file dirname [info script]]
+lappend auto_path [file dirname $lib_path]
 
 package require Tcl 8.6
+package require Tk
+package require Ttk
 package require TclOO
 package require Thread
 package require http
@@ -21,35 +24,44 @@ package require tcl::chan::null
 package require tcl::transform::observe
 package require oo::util
 package require yaml
+
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix
 
-bindtags . [concat [bindtags .] MAINWIN]
+# 앱 이름 설정
+tk appname ApkZipper2
 
-source $libpath/PluginBase.tcl
-source $libpath/Plugins.tcl
-source $libpath/Utility.tcl
-source $libpath/Config.tcl
-source $libpath/View.tcl
-source $libpath/WinADB.tcl
-source $libpath/Session.tcl
-if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
-	source $::exeDir/ApkzTest/ApkzDbg.tcl
-}
-
+# HTTPS 설정
 autoproxy::init
 http::register https 443 ::autoproxy::tls_socket
+
+source -encoding utf-8 $lib_path/PluginBase.tcl
+source -encoding utf-8 $lib_path/Plugins.tcl
+source -encoding utf-8 $lib_path/Utility.tcl
+source -encoding utf-8 $lib_path/Config.tcl
+source -encoding utf-8 $lib_path/View.tcl
+source -encoding utf-8 $lib_path/WinADB.tcl
+source -encoding utf-8 $lib_path/Session.tcl
+if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
+	source -encoding utf-8 $::exe_dir/ApkzTest/ApkzDbg.tcl
+}
+
+# TODO: 여기 의존성 좀 어떻게 처리해야 함. 서로 순서를 못 바꾸는 듯.
 View::init
 loadConfig
 
+# 스크롤바를 우클릭하면 콘솔 띄우기
 bind .bottomConsole.sb <Control-Shift-3> {
 	catch {console show}
 }
-# �ӽ����� ���� �� �����۾�
-bind MAINWIN <Destroy> {+
+
+# 프로그램 종료 시 임시파일 제거 등 정리작업
+set CleanupApplicationScript {
 	catch {
 		cleanupVFile
 		saveConfig
 	}
 	exit
 }
+bind . <Destroy> [concat $CleanupApplicationScript [bind . <Destroy>]]
+unset CleanupApplicationScript

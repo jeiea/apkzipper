@@ -125,14 +125,14 @@ plugin Compile apkPath {
 	apktool b -a [getVFile aapt.exe] $cApp(proj) $cApp(unsigned)
 
 	puts $::wrDebug [mc {Adjusting compressing level...}]
-	# INFO: -aoa´Â overwrite all destination filesÀÌ´Ù
-	# TODO: file nativename... ±ÍÂúÁö¸¸ ¼öµ¿À¸·Î ±×°Å ¹Ú´Â °Ô °ß°íÇÑ µí
+	# INFO: -aoaëŠ” overwrite all destination filesì´ë‹¤
+	# TODO: file nativename... ê·€ì°®ì§€ë§Œ ìˆ˜ë™ìœ¼ë¡œ ê·¸ê±° ë°•ëŠ” ê²Œ ê²¬ê³ í•œ ë“¯
 	7za x -y -aoa -o$cApp(proj)\\temp $cApp(unsigned)
 
-	# System compileÀÏ °æ¿ì º°µµÀÇ ÀÛ¾÷
+	# System compileì¼ ê²½ìš° ë³„ë„ì˜ ì‘ì—…
 	if [regexp {compileRoutine} [info coroutine]] yield
 
-	# ¿øº»»çÀÎ °­Á¦ÁÖÀÔ. ½ÇÇàÀº µÇµµ ¾Û Å©·¡½ÃÀÇ ¿äÀÎÀÌ µÉ ¼ö ÀÖ´Ù.
+	# ì›ë³¸ì‚¬ì¸ ê°•ì œì£¼ì…. ì‹¤í–‰ì€ ë˜ë„ ì•± í¬ë˜ì‹œì˜ ìš”ì¸ì´ ë  ìˆ˜ ìˆë‹¤.
 	if [file isdirectory $cApp(proj)/META-INF] {
 		file copy -force -- $cApp(proj)/META-INF $cApp(proj)/temp/META-INF
 	}
@@ -167,7 +167,7 @@ plugin Zip apkPath {
 		return
 	}
 
-	# 7za a´Â ÆÄÀÏÀÌ ÀÌ¹Ì ÀÖÀ¸¸é Ãß°¡ÇÏ±â ¶§¹®¿¡ ¹Ì¸® Áö¿ì°í, ÀÚ¹Ù¼Ò½ºÆÄÀÏÀº »©°í¾ĞÃà
+	# 7za aëŠ” íŒŒì¼ì´ ì´ë¯¸ ìˆìœ¼ë©´ ì¶”ê°€í•˜ê¸° ë•Œë¬¸ì— ë¯¸ë¦¬ ì§€ìš°ê³ , ìë°”ì†ŒìŠ¤íŒŒì¼ì€ ë¹¼ê³ ì••ì¶•
 	puts $::wrInfo [mc Compressing...]
 	file delete -- $cApp(unsigned)
 	7za a -y -tzip -mx$::config(zlevel) $cApp(unsigned) $cApp(proj)\\* -x!classes.jar
@@ -349,14 +349,14 @@ proc {Clean folder} detail {
 	if {$::cAppPaths ne {}} {
 		set modDir [file dirname [lindex $::cAppPaths 0]]
 	} {
-		set modDir $::exeDir/modding
+		set modDir $::exe_dir/modding
 	}
 
 	switch $detail {
 		{Delete all result}				{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk]}
-		{Delete all workdir}			{set target [globFilter $::exeDir/projects/* $modDir/*.dex]}
-		{Delete all except original}	{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk $::exeDir/projects/* $modDir/*.dex]}
-		{Delete all}					{set target [globFilter $modDir/*.apk $modDir/*.odex $::exeDir/projects/* $modDir/*.dex]}
+		{Delete all workdir}			{set target [globFilter $::exe_dir/projects/* $modDir/*.dex]}
+		{Delete all except original}	{set target [globFilter $modDir/signed_*.apk $modDir/unsigned_*.apk $::exe_dir/projects/* $modDir/*.dex]}
+		{Delete all}					{set target [globFilter $modDir/*.apk $modDir/*.odex $::exe_dir/projects/* $modDir/*.dex]}
 	}
 
 	set listItem {}
@@ -411,7 +411,7 @@ plugin {Check update2} {} {
 	set changelog {}
 	set ret [catch {
 		foreach ver [dict keys $updateinfo] {
-			if {[package vcompare $ver $::apkzver] != 1} continue
+			if {[package vcompare $ver $::apkz_ver] != 1} continue
 
 			append changelog $ver
 			if [dict exist $updateinfo $ver distgrade] {
@@ -435,7 +435,7 @@ plugin {Check update2} {} {
 			}
 		}
 
-		if {[package vcompare $latestver $::apkzver] != 1} {
+		if {[package vcompare $latestver $::apkz_ver] != 1} {
 			puts $::wrInfo [mc {There are no updates available.}]
 			return
 		}
@@ -450,7 +450,7 @@ plugin {Check update2} {} {
 		} {
 			set filename {Apkzipper.exe}
 		}
-		set updatefile [AdaptPath [file normalize "$::exeDir/$filename"]]
+		set updatefile [AdaptPath [file normalize "$::exe_dir/$filename"]]
 
 		foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
 			set success [catch {httpcopy $downloadurl $updatefile}]
@@ -487,7 +487,7 @@ plugin {Check update} {} {
 	set changelog {}
 	set ret [catch {
 		foreach ver [dict keys $updateinfo] {
-			if {[package vcompare $ver $::apkzver] != 1} continue
+			if {[package vcompare $ver $::apkz_ver] != 1} continue
 
 			append changelog $ver
 			if [dict exist $updateinfo $ver distgrade] {
@@ -511,7 +511,7 @@ plugin {Check update} {} {
 			}
 		}
 
-		if {[package vcompare $latestver $::apkzver] != 1} {
+		if {[package vcompare $latestver $::apkz_ver] != 1} {
 			puts $::wrInfo [mc {There are no updates available.}]
 			return
 		}
@@ -526,7 +526,7 @@ plugin {Check update} {} {
 		} {
 			set filename {Apkzipper.exe}
 		}
-		set updatefile [AdaptPath [file normalize "$::exeDir/$filename"]]
+		set updatefile [AdaptPath [file normalize "$::exe_dir/$filename"]]
 
 		foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
 			set success [catch {httpcopy $downloadurl $updatefile}]
@@ -596,8 +596,8 @@ proc queryApiLevel {apkPath} {
 	puts $::wrVerbose [mc {Cannot detect api level. Default value applied.} $api]
 }
 
-# smali°¡ odexÀÇÁ¸¼º ÂüÁ¶°æ·Î¸¦ ¹Ù²Ù´Â ÆÄ¶ó¹ÌÅÍ¸¦ Áö¿øÇÏÁö ¾Ê±â ¶§¹®¿¡ ¾îÂ¿ ¼ö ¾øÀÌ
-# µğ¿Àµ¦½º ³»¿ë¹° ÆÄÀÏ °æ·Î¸¦ ¾Û ÆÄÀÏ °æ·ÎÇÏ°í °°Àº °æ·Î¿¡ À§Ä¡½ÃÅ°°Ô µÇ¾ú´Ù.
+# smaliê°€ odexì˜ì¡´ì„± ì°¸ì¡°ê²½ë¡œë¥¼ ë°”ê¾¸ëŠ” íŒŒë¼ë¯¸í„°ë¥¼ ì§€ì›í•˜ì§€ ì•Šê¸° ë•Œë¬¸ì— ì–´ì©” ìˆ˜ ì—†ì´
+# ë””ì˜¤ë±ìŠ¤ ë‚´ìš©ë¬¼ íŒŒì¼ ê²½ë¡œë¥¼ ì•± íŒŒì¼ ê²½ë¡œí•˜ê³  ê°™ì€ ê²½ë¡œì— ìœ„ì¹˜ì‹œí‚¤ê²Œ ë˜ì—ˆë‹¤.
 plugin {Deodex} {apkPath} {
 	getNativePathArray $apkPath cApp
 	
@@ -664,17 +664,17 @@ plugin {View java source} {apkPath} {
 
 proc bugReport {} {
 	set null [tcl::chan::null]
-	set reportFile [file nativename $::exeDir/ApkzBugReport.zip]
+	set reportFile [file nativename $::exe_dir/ApkzBugReport.zip]
 	file delete -force $reportFile
 
-	# Problem steps recorder ½ÇÇà
+	# Problem steps recorder ì‹¤í–‰
 	set psr [auto_execok psr.exe]
 	if {$psr ne {}} {
 		puts $::wrInfo [mc {You can record process invoking problem.}]
 		bgopen -conderror &&0 $psr /output $reportFile /recordpid [pid]
 	}
 
-	# ·Î±×ÆÄÀÏ »ı¼º
+	# ë¡œê·¸íŒŒì¼ ìƒì„±
 	set tCon .bottomConsole.tCmd
 	set log [$tCon get 0.0 end]
 	set logFile [getVFile log.txt]
@@ -682,18 +682,18 @@ proc bugReport {} {
 	puts -nonewline $logHandle $log
 	close $logHandle
 
-	# ·Î±×ÆÄÀÏ Ãß°¡, ¹ö±×¸®Æ÷Æ® ÆÄÀÏ ½ÇÇà
+	# ë¡œê·¸íŒŒì¼ ì¶”ê°€, ë²„ê·¸ë¦¬í¬íŠ¸ íŒŒì¼ ì‹¤í–‰
 	bgopen -outchan $null [getVFile 7za.exe] a -y -tzip -mx9 $reportFile $logFile
 	exec {*}[auto_execok start] {} $reportFile
 
-	# Àü¼ÛÈ®ÀÎ
+	# ì „ì†¡í™•ì¸
 	append mes [mc {This archive file will be sent intactly.}]\n
 	append mes [mc {You can add some attachment at this step.}]\n
 	append mes [mc {Will you send it?}]
 	set reply [modeless_dialog .reportConfirm [mc {Bug report}] $mes {} 0 [mc Yes] [mc No]]
 	if $reply return
 
-	# ÆÄÀÏ ÀĞ¾î º¸³»±â
+	# íŒŒì¼ ì½ì–´ ë³´ë‚´ê¸°
 	set archive [open $reportFile rb]
 	set data [read $archive]
 	close $archive
