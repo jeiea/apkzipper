@@ -412,80 +412,6 @@ proc {Clean folder} detail {
 	puts $::wrInfo [mc {%d items are deleted.} $count]
 }
 
-plugin {Check update2} {} {
-	set ::currentOp {update}
-	set exit {set ::currentOp ""; return}
-	set updateFileSignature {Apkz Update Information File}
-
-	puts $::wrInfo [mc {Checking update..}]
-
-	set updateinfo [httpcopy http://db.tt/v7qgMqqN]
-	if ![string match $updateFileSignature* $updateinfo] {
-		puts $::wrInfo [mc {Update info not found. Please check website.}]
-		eval $exit
-	}
-
-	set updateinfo [string map [list $updateFileSignature {}] $updateinfo]
-
-	set changelog {}
-	set ret [catch {
-		foreach ver [dict keys $updateinfo] {
-			if {[package vcompare $ver $::apkz_ver] != 1} continue
-
-			append changelog $ver
-			if [dict exist $updateinfo $ver distgrade] {
-				append changelog " [dict get $updateinfo $ver distgrade]"
-			}
-			append changelog \n
-			if [dict exist $updateinfo $ver description] {
-				append changelog [dict get $updateinfo $ver description]\n
-			}
-			if {[llength [split $changelog \n]] > 11} {
-				append changelog ...
-				break
-			}
-			append changelog \n
-		}
-
-		set latestver 0
-		foreach ver [dict keys $updateinfo] {
-			if {[package vcompare $ver $latestver] == 1} {
-				set latestver $ver
-			}
-		}
-
-		if {[package vcompare $latestver $::apkz_ver] != 1} {
-			puts $::wrInfo [mc {There are no updates available.}]
-			return
-		}
-
-		set ans [tk_dialog .updateDlg [mc {New version found!}] \
-			"[mc {Do you want to update?}]\n\n[string trim $changelog]" \
-			{} [mc Yes] [mc Yes] [mc No]]
-		if {$ans == 1} $exit
-
-		if [dict exist $updateinfo $latestver filename] {
-			set filename [dict get $updateinfo $latestver filename]
-		} {
-			set filename {Apkzipper.exe}
-		}
-		set updatefile [AdaptPath [file normalize "$::exe_dir/$filename"]]
-
-		foreach downloadurl [dict get $updateinfo $latestver downloadurl] {
-			set success [catch {httpcopy $downloadurl $updatefile}]
-			if {$success == 0} {
-				catch {exec [auto_execok explorer.exe] [file nativename [file dirname $updatefile]]}
-				break
-			}
-		}
-	} {} errinfo]
-
-	if {$ret == 1} {
-		puts $::wrError "[mc ERROR] $ret: [dict get $errinfo -errorinfo]\n"
-	}
-	eval $exit
-}
-
 plugin {Check update} {} {
 #	if [::View::running_other_task?] return
 
@@ -495,7 +421,7 @@ plugin {Check update} {} {
 
 	puts $::wrInfo [mc {Checking update..}]
 
-	set updateinfo [httpcopy http://db.tt/v7qgMqqN]
+	set updateinfo [httpcopy http://ddwroom.woobi.co.kr/apkzUpdateInfo.php]
 	if ![string match $updateFileSignature* $updateinfo] {
 		puts $::wrInfo [mc {Update info not found. Please check website.}]
 		eval $exit
