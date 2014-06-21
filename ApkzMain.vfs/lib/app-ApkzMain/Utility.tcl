@@ -75,7 +75,7 @@ if {$tcl_platform(platform) == {windows}} {
 		#		}
 		set w(out) $::wrDebug
 		set w(err) $::wrError
-		set condErr {ni {}}
+		set condErr {in {}}
 
 		set cmdline $args
 		set opTable {-chan -outchan -errchan -conderror --}

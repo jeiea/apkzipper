@@ -1,4 +1,5 @@
 namespace eval WinADB {
+	namespace import ::msgcat::mc
 	variable adbErrMap
 
 	array set adbErrMap [list \

@@ -1,5 +1,7 @@
-foreach jarfile {apktool signapk baksmali smali} {
-	proc $jarfile args [format {
+
+# jar파일을 다루는 백엔드 실행파일 함수들
+foreach JarFile {apktool signapk baksmali smali} {
+	proc $JarFile args [string map [list @ $JarFile] {
 		set listener javaListener[generateID]
 		set ::javaAtom($listener) {}
 		set ::hasErr false
@@ -25,7 +27,7 @@ foreach jarfile {apktool signapk baksmali smali} {
 		chan configure $result -blocking false -buffering none
 		chan event $result readable [list $listener $result]
 		try {
-			set exitcode [bgopen -chan $result [Java] -jar [getVFile %1$s.jar] {*}$args]
+			set exitcode [bgopen -chan $result [Java] -jar [getVFile @.jar] {*}$args]
 		} on error {msg info} {
 			$listener $result
 			javaExceptionDetector $::javaAtom($listener)
@@ -37,9 +39,10 @@ foreach jarfile {apktool signapk baksmali smali} {
 			rename $listener {}
 		}
 		return $exitcode
-	} $jarfile]
+	}]
 }
 
+# 자바 애플리케이션에서 발생한 예외 중 아는 예외는 따로 정보를 출력해주는 함수
 proc javaExceptionDetector {log} {
 	# baksmali error
 	if [regexp -line {.*Cannot locate boot class path file (.*)} $log {} {dependancy}] {
@@ -60,13 +63,16 @@ proc javaExceptionDetector {log} {
 	}
 }
 
-foreach exefile {fastboot 7za aapt zipalign jd-gui} {
-	eval [format {
-		proc %1$s args {
-			return [bgopen [getVFile %1$s.exe] {*}$args]
-	}} $exefile]
+# 단순 인자실행 백엔드 실행파일 함수
+foreach ExeFile {fastboot 7za aapt zipalign jd-gui} {
+	eval [string map [list @ $ExeFile] {
+		proc @ args {
+			return [bgopen [getVFile @.exe] {*}$args]
+		}
+	}]
 }
 
+# optipng의 결과를 번역해서 출력하는 함수
 proc pushPNGout {chan png} {
 	set data [read $chan]
 	puts -nonewline $::wrDebug $data
@@ -77,6 +83,7 @@ proc pushPNGout {chan png} {
 	}
 }
 
+# optipng 백엔드
 proc optipng args {
 	set outchan [tcl::chan::fifo]
 	chan configure $outchan -blocking false -buffering none
@@ -87,6 +94,7 @@ proc optipng args {
 	return [exec -- [getVFile optipng.exe] {*}$args >@ $w 2>@ $w &]
 }
 
+# 
 plugin Extract apkPath {
 	getNativePathArray $apkPath cApp
 

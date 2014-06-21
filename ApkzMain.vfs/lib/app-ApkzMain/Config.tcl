@@ -1,8 +1,7 @@
-
 # 전역변수 선언부.
 ::msgcat::mcload $lib_path/locale
-set vfsRoot [file dirname [file dirname $lib_path]]
-set exe_dir [file dirname $vfsRoot]
+set vfs_root [file dirname [file dirname $lib_path]]
+set exe_dir [file dirname $vfs_root]
 set env(PATH) "$exe_dir;$env(PATH)"
 array set configDefault {
 	zlevel	9
@@ -41,10 +40,11 @@ array set configDefault {
 array set config [array get configDefault]
 
 namespace eval Config {
-	namespace export addHist saveConfig loadConfig getcfg setcfg showDialog
+	namespace export addHist saveConfig loadConfig getcfg setcfg showDialog\
+		getConfigFilePath
 	variable fileSignature {Apkz Config File}
 	variable visible? false
-	
+
 }
 
 # 배열이 선언되어 있어야 trace가 먹힘
@@ -57,6 +57,7 @@ array set hist [array get histDefault]
 # 추가하면 알아서 맨 처음 항목으로 추가되도록 조작한다.
 # 최대 항목 수를 안 넘도록 감독.
 trace add variable ::hist read Config::__traceHist__
+
 proc Config::__traceHist__ {ar key op} {
 	if ![info exist ::hist($key)] {
 		set ::hist($key) {}
@@ -82,7 +83,7 @@ proc Config::getConfigFilePath {} {
 	if [file exist $::exe_dir/apkz.cfg] {
 		set path $::exe_dir/apkz.cfg
 	} {
-		set path $::env(appdata)/apkz.cfg 
+		set path $::env(appdata)/apkz.cfg
 	}
 	return [file normalize $path]
 }
@@ -113,6 +114,7 @@ proc Config::getMinorVersion {version subver} {
 # subver에 따라 메이저, 마이너버전도 비교할 수 있음.
 proc Config::vcompare {a b subver} {
 	return [package vcompare [getMinorVersion $a $subver] [getMinorVersion $b $subver]]
+
 }
 
 proc Config::loadConfig {} {
@@ -159,7 +161,7 @@ proc Config::loadConfig {} {
 		puts $::wrVerbose [mc {Error opening config file: %s} $info]\n[mc {Default applied.}]
 		array set ::config [array get ::configDefault]
 	} finally {
-#	에러가 있다면 명시적으로 보여야 함.
+		# 에러가 있다면 명시적으로 보여야 함.
 		if [catch applyConfig] {
 			array set ::config [array get ::configDefault]
 			applyConfig
@@ -256,10 +258,10 @@ coproc Config::showDialog {{location ""}} {
 	pack [ttk::button .config.ok	 -text [mc OK	 ]	-command [info coroutine]] -side right
 	pack [ttk::button .config.reset	 -text [mc {Reset to previous}] \
 		-command ::Config::regenerateDialog] -side left
-	
+
 	$nb add [set tuner [ttk::frame $nb.tuner]] -text [mc {Tuner}]
 	$nb select $tuner
-	
+
 	# 이런 경우 중복 제거가 가능하려나... 일단 나중에 plugin에서 끼우도록 할 경우를 대비해
 	# 중복은 남겨두지만 영 찝찝.
 
@@ -268,7 +270,7 @@ coproc Config::showDialog {{location ""}} {
 	set lbZLevel [ttk::label $tuner.lbZLevel -text [mc {Ziplevel:}]]
 	set cbZLevel [ttk::combobox $tuner.cbZlevel -values $zlevels -state readonly]
 	$cbZLevel current $::config(zlevel)
-	
+
 	# 디컴옵션 생성
 	set decOptMap {
 		{-r   }	{Sources}
@@ -280,20 +282,20 @@ coproc Config::showDialog {{location ""}} {
 	set lbTarget [ttk::label $tuner.lbTarget -text [mc {Decompile target:}]]
 	set cbTarget [ttk::combobox $tuner.cbtarget -values $decOptLocalLabels -state readonly]
 	$cbTarget current [lsearch [dict keys $decOptMap] $::config(decomTargetOpt)]
-	
+
 	# 로그레벨
 	set logLevels {Error Warning Info Debug}
 	set localized [lmap level $logLevels {mc $level}]
 	set lbVerbose [ttk::label $tuner.lbVerbose -text [mc {Log level:}]]
 	set cbVerbose [ttk::combobox $tuner.cbVerbose -values $localized -state readonly]
 	$cbVerbose current [lsearch $logLevels $::config(verbose)]
-	
+
 	# 확장자 다른파일 추가확인
 	set lbExtConfirm [ttk::label $tuner.lbExtConfirm -text [mc {Operation to other extension:}]]
 	set cbExtConfirm [ttk::combobox $tuner.cbExtConfirm \
 		-values [lmap str {Ask {Yes to all} {No to all}} {mc $str}] -state readonly]
 	$cbExtConfirm current [expr {$::config(permitExtension) - 1}]
-	
+
 	# 프로젝트폴더 위치 지정
 	set projLocEnum [list [file nativename ./projects] \
 		[mc {Executable directory}] [mc {Apk directory}]]
@@ -310,17 +312,17 @@ coproc Config::showDialog {{location ""}} {
 			set ::cbProj [file nativename $::config(projectLoc)]
 		}
 	}
-	
+
 	# 자동 업뎃, 폰트
 	global bAutoup
-	set bAutoup $::config(autoUpdate) 
+	set bAutoup $::config(autoUpdate)
 	set btnAutoup [ttk::checkbutton $tuner.btnAutoup -text [mc {Auto update}] -variable ::bAutoup]
-	
+
 	tk fontchooser configure -parent .config
 	set ::fontBtnText [getWidgetFont $::View::tCon]
 	set btnFont [ttk::button $tuner.btnFont -textvariable ::fontBtnText \
 		-command [list Config::showFontDialog $::View::tCon]]
-	
+
 	# 배치
 	grid $lbZLevel $cbZLevel -padx 3 -pady 2
 	grid $lbTarget $cbTarget -padx 3 -pady 2
@@ -328,7 +330,7 @@ coproc Config::showDialog {{location ""}} {
 	grid $lbExtConfirm $cbExtConfirm -padx 3 -pady 2
 	grid $lbProjLoc $cbProjLoc -padx 3 -pady 2
 	grid $btnAutoup $btnFont -padx 3 -pady 2 -sticky we
-	
+
 	# 창이 꺼지면 코루틴 삭제
 	bindtags .config [concat [bindtags .config] ConfigToplevel]
 	bind ConfigToplevel <Destroy> [format {
@@ -337,7 +339,7 @@ coproc Config::showDialog {{location ""}} {
 
 	# 대기
 	set answer [yield]
-	
+
 	# 값 적용
 	set ::config(zlevel) [$cbZLevel current]
 	set ::config(decomTargetOpt) [lindex [dict keys $decOptMap] [$cbTarget current]]

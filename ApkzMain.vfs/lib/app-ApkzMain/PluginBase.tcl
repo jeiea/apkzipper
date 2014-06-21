@@ -36,7 +36,7 @@ proc getVFile args {
 
 	set fileName [lindex $args 0]
 	set realFile [file join $virtualTmpDir $fileName]
-	set virtualFile [file join $::vfsRoot binaries $fileName]
+	set virtualFile [file join $::vfs_root binaries $fileName]
 
 	if [file exists $virtualFile] {
 		if {![file exists $realFile] ||
@@ -70,7 +70,7 @@ proc getNativePathArray {apkPath newVar} {
 
 	set cApp(path) $apkPath
 	set cApp(name)		[file tail $apkPath]
-	set cApp(proj)		[file dirname $::vfsRoot]/projects/$cApp(name)
+	set cApp(proj)		[file dirname $::vfs_root]/projects/$cApp(name)
 	set cApp(unsigned)	[file dirname $cApp(path)]/unsigned_$cApp(name)
 	set cApp(signed)	[file dirname $cApp(path)]/signed_$cApp(name)
 	set cApp(odex)		[file rootname $cApp(path)].odex

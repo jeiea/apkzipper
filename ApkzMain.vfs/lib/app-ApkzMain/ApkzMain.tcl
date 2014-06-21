@@ -1,3 +1,4 @@
+# 프로그램 버전은 pkgIndex에서 전적으로 관리.
 set ::apkz_ver [package versions app-ApkzMain]
 
 set ::apkz_ver_dist beta
@@ -35,6 +36,7 @@ tk appname ApkZipper2
 autoproxy::init
 http::register https 443 ::autoproxy::tls_socket
 
+# 소스 인클루드
 source -encoding utf-8 $lib_path/PluginBase.tcl
 source -encoding utf-8 $lib_path/Plugins.tcl
 source -encoding utf-8 $lib_path/Utility.tcl
@@ -42,6 +44,8 @@ source -encoding utf-8 $lib_path/Config.tcl
 source -encoding utf-8 $lib_path/View.tcl
 source -encoding utf-8 $lib_path/WinADB.tcl
 source -encoding utf-8 $lib_path/Session.tcl
+
+# 직접 실행 시엔 디버깅 스크립트도 추가로 실행한다.
 if [regexp {.*wish(86)?\.exe$} [info nameofexecutable]] {
 	source -encoding utf-8 $::exe_dir/ApkzTest/ApkzDbg.tcl
 }
