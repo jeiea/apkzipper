@@ -68,6 +68,7 @@ if {$tcl_platform(platform) == {windows}} {
 	# --       옵션 파싱을 그만하고 무조건 명령행으로 받아들인다.
 	# chan 같은 걸 쓸땐 tcl::chan::fifo같은 걸 넣을 수 있다.
 	# chan pipe를 그대로 쓰려면 readable에서 실시간으로 처리하도록 해주어야 한다.
+
 	proc bgopen {args} {
 		#		catch {
 		#			::twapi::allocate_console
@@ -114,7 +115,7 @@ if {$tcl_platform(platform) == {windows}} {
 		# twapi를 사용하지 않고는 방법이 없는 것 같다.
 		# Tcl의 기능만으로는 조금 결함이 보인다.
 		# 생성한 프로세스의 핸들을 받아 기다린다.
-		set Handle [twapi::get_process_handle $pid -access generic_all]
+		set Handle [::twapi::get_process_handle $pid -access generic_all]
 		twapi::wait_on_handle $Handle -async {apply {{handle signal} {
 				set ::bgAlive($handle) [::twapi::get_process_exit_code $handle]
 				::twapi::close_handle $handle

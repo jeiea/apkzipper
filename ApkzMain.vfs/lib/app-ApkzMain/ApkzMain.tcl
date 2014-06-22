@@ -14,7 +14,6 @@ package require TclOO
 package require Thread
 package require http
 package require msgcat
-package require twapi
 package require tooltip
 package require tcl::transform::observe
 package require tls
@@ -26,6 +25,10 @@ package require tcl::chan::null
 package require tcl::transform::observe
 package require oo::util
 package require yaml
+
+if {$tcl_platform(platform) == {windows}} {
+	package require twapi
+}
 
 namespace import ::msgcat::mc
 namespace import ::tcl::prefix

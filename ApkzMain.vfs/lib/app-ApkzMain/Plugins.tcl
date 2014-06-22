@@ -613,10 +613,23 @@ proc bugReport {} {
 	file delete -force $reportFile
 
 	# Problem steps recorder 실행
-	set psr [auto_execok psr.exe]
+	set psr [file nativename [auto_execok psr.exe]]
 	if {$psr ne {}} {
 		puts $::wrInfo [mc {You can record process invoking problem.}]
-		bgopen $psr /output $reportFile /recordpid [pid]
+		#		bgopen $psr /output $reportFile /recordpid [pid]
+		::twapi::shell_execute -path $psr -params [concat /output $reportFile /recordpid [pid]]
+		while true {
+			set PsrPid [lindex [::twapi::get_process_ids -name psr.exe] 0]
+			if {$PsrPid eq {}} break
+
+			set Handle [::twapi::get_process_handle $PsrPid -access generic_all]
+			::twapi::wait_on_handle $Handle -async [::twapi::lambda {handle signal} {
+			::twapi::close_handle $handle
+			set ::apkz_bug_report_signal_receiver $signal
+		}]
+			vwait ::apkz_bug_report_signal_receiver
+			unset ::apkz_bug_report_signal_receiver
+		}
 	}
 
 	# 로그파일 생성
@@ -642,7 +655,7 @@ proc bugReport {} {
 	set archive [open $reportFile rb]
 	set data [read $archive]
 	close $archive
-	set transErr [catch {http::geturl http://jeiea.dothome.co.kr/bugreport.php \
+	set transErr [catch {http::geturl http://ddwroom.woobi.co.kr/bugreport.php \
 			-method POST -query $data -type {application/zip}}]
 	if $transErr {
 		puts $::wrError [mc {Cannot connect to server.}]
