@@ -1,4 +1,21 @@
 Apkz Update Information File
+
+
+2.4 {
+description {apktool 버전 상승 (v2.0.0-Beta9)
+smali, baksmali버전 상승 (v2.0b5 -> v2.0.3)
+platform tools v20140321
+optipng 버전 상승 (v0.7.4 -> v0.7.5)
+jd-gui 버전 상승 (v0.3.5 -> v0.3.6)
+twapi버전 상승 (4.0.61)
+버그리포트된 에러메시지 대응법 설명 하나 추가
+버그리포트 파일첨부할 수 있게함
+압축시 classes.jar가 추가될 수도 있는 문제 수정}
+downloadurl https://db.tt/JqL0KK1U
+filename "ApkZipper v2.4 beta.exe"
+distgrade beta}
+
+
 2.3.2 {
 description {fix: PNG최적화 디버그메시지로 변경
 간단모드에 프레임워크 설치와 디컴파일 통합}
